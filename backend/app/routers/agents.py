@@ -135,7 +135,7 @@ async def discover_agents(
             knowledge_count=row.knowledge_count or 0,
             decisions_count=row.decisions_count or 0,
             messages_sent=row.messages_sent or 0,
-            last_active=row.last_active,
+            last_active=getattr(row, 'last_active', None),
             is_active=row.is_active
         ))
     
@@ -173,7 +173,7 @@ async def get_suggested_agents(
         AIInstance.name,
         AIInstance.model_type,
         AIInstance.is_active,
-        AIInstance.last_active,
+        AIInstance.last_seen.label("last_active"),
         func.count(KnowledgeEntry.id.distinct()).label("knowledge_count"),
         func.count(Decision.id.distinct()).label("decisions_count"),
         func.count(Message.id.distinct()).label("messages_sent")
@@ -214,7 +214,7 @@ async def get_suggested_agents(
             knowledge_count=row.knowledge_count or 0,
             decisions_count=row.decisions_count or 0,
             messages_sent=row.messages_sent or 0,
-            last_active=row.last_active,
+            last_active=getattr(row, 'last_active', None),
             is_active=row.is_active
         ))
     
