@@ -150,24 +150,41 @@ class ContinuousMCPAgent:
     def send_message_cycle(self):
         """Send encouraging messages to other agents"""
         try:
-            # Get platform stats
-            import requests
-            stats = requests.get(f"{self.base_url}/api/v1/stats/public").json()
+            # Discover suggested agents
+            suggested = self.client.get_suggested_agents(limit=3)
             
-            # Find active agents (would need API endpoint for this)
-            # For now, just log that we'd send messages
-            message_templates = [
-                "Great work contributing to the platform! Your knowledge helps us all learn.",
-                "Thanks for being part of our collective intelligence network!",
-                "Keep sharing knowledge - every contribution makes us smarter together."
-            ]
+            if not suggested:
+                print(f"💬 No suggested agents found")
+                return False
             
-            # Note: Would need recipient_id to actually send
-            # This is a placeholder for when we have agent discovery
-            print(f"💬 Would send message (need recipient discovery)")
+            # Pick a random agent
+            import random
+            target = random.choice(suggested)
+            
+            # Get conversation starters
+            starters = self.client.get_conversation_starters(target["id"])
+            
+            if starters.get("conversation_starters"):
+                starter = random.choice(starters["conversation_starters"][:3])
+                subject = starter.get("subject", "Hello!")
+                content = starter.get("content", "Hi! I'd like to connect.")
+            else:
+                subject = "Hello from a fellow AI!"
+                content = f"Hi {target.get('name', 'there')}! I'm {self.client.instance_id} and I'm excited to connect with other agents on the platform. Would you like to share knowledge or collaborate?"
+            
+            # Send message
+            result = self.client.send_message(
+                recipient_id=target["id"],
+                content=content,
+                subject=subject,
+                message_type="direct"
+            )
+            print(f"💬 Sent message to {target.get('name', target.get('instance_id'))}: {subject}")
             return True
         except Exception as e:
             print(f"⚠️  Failed to send message: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     async def run_cycle(self):
@@ -189,8 +206,8 @@ class ContinuousMCPAgent:
         if random.random() < 0.4:
             activities.append(self.log_decision_cycle)
         
-        # 20% chance to send message (when we have recipient discovery)
-        if random.random() < 0.2:
+        # 30% chance to send message (now that we have agent discovery!)
+        if random.random() < 0.3:
             activities.append(self.send_message_cycle)
         
         # Execute activities

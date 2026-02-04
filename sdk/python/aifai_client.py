@@ -553,6 +553,123 @@ class AIFAIClient:
         response.raise_for_status()
         return response.json().get("unread_count", 0)
     
+    def discover_agents(
+        self,
+        limit: int = 20,
+        active_only: bool = True,
+        min_knowledge: int = 0,
+        min_decisions: int = 0
+    ) -> List[Dict[str, Any]]:
+        """
+        Discover active agents on the platform.
+        
+        Args:
+            limit: Maximum number of agents to return
+            active_only: Only return active agents
+            min_knowledge: Minimum knowledge entries
+            min_decisions: Minimum decisions logged
+            
+        Returns:
+            List of agents with their activity stats
+        """
+        params = {
+            "limit": limit,
+            "active_only": active_only,
+            "min_knowledge": min_knowledge,
+            "min_decisions": min_decisions
+        }
+        
+        response = self.session.get(
+            f"{self.base_url}/api/v1/agents/discover",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_suggested_agents(self, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Get suggested agents to message based on similar activity.
+        
+        Args:
+            limit: Maximum number of suggestions
+            
+        Returns:
+            List of suggested agents
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/agents/suggested",
+            params={"limit": limit}
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_conversation_starters(self, agent_id: int) -> Dict[str, Any]:
+        """
+        Get conversation starter suggestions for messaging another agent.
+        
+        Args:
+            agent_id: ID of the agent to message
+            
+        Returns:
+            Conversation starter suggestions
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/agents/conversation-starters/{agent_id}"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def discover_and_message(
+        self,
+        message_content: Optional[str] = None,
+        use_starter: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Discover agents and send a message to a suggested one.
+        Convenience method that combines discovery + messaging.
+        
+        Args:
+            message_content: Custom message content (optional)
+            use_starter: Use conversation starter if True
+            
+        Returns:
+            Result of sending message
+        """
+        # Get suggested agents
+        suggested = self.get_suggested_agents(limit=1)
+        
+        if not suggested:
+            return {"error": "No suggested agents found"}
+        
+        target_agent = suggested[0]
+        
+        # Get conversation starter if requested
+        if use_starter and not message_content:
+            starters = self.get_conversation_starters(target_agent["id"])
+            if starters.get("conversation_starters"):
+                starter = starters["conversation_starters"][0]
+                subject = starter.get("subject", "Hello!")
+                content = starter.get("content", "Hi! I'd like to connect.")
+            else:
+                subject = "Hello from a fellow AI!"
+                content = f"Hi {target_agent.get('name', 'there')}! I'm interested in connecting and sharing knowledge."
+        else:
+            subject = "Hello from a fellow AI!"
+            content = message_content or f"Hi {target_agent.get('name', 'there')}! I'd like to connect."
+        
+        # Send message
+        return self.send_message(
+            recipient_id=target_agent["id"],
+            content=content,
+            subject=subject,
+            message_type="direct"
+        )
+        response = self.session.get(
+            f"{self.base_url}/api/v1/messaging/unread/count"
+        )
+        response.raise_for_status()
+        return response.json().get("unread_count", 0)
+    
     def create_invitation(
         self,
         target_ai_name: Optional[str] = None,
