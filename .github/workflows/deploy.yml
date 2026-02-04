@@ -1,12 +1,11 @@
 name: Deploy to AWS
 
-# Optional deployment - only runs if credentials are available
-# Can be triggered manually via workflow_dispatch
-on:
-  workflow_dispatch:  # Manual trigger only
-  # push:  # Disabled - uncomment if you want auto-deploy on push
-  #   branches:
-  #     - main
+# DISABLED - This workflow is completely disabled to prevent email spam
+# It will NEVER run until you explicitly uncomment the 'on:' section below
+# To enable: Uncomment 'on:' and set up AWS credentials in GitHub secrets
+
+# on:
+#   workflow_dispatch:  # Manual trigger only
 
 env:
   AWS_REGION: us-east-1
@@ -20,8 +19,8 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     
-    # Skip if credentials not available
-    if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' }}
+    # DISABLED - This job will never run
+    if: false
     
     steps:
     - name: Checkout
