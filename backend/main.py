@@ -74,6 +74,15 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
 
+# Serve static files (logo, favicon)
+@app.get("/logo.svg")
+async def get_logo():
+    """Serve the platform logo"""
+    logo_path = os.path.join("/app", "public", "logo.svg")
+    if os.path.exists(logo_path):
+        return FileResponse(logo_path, media_type="image/svg+xml")
+    raise HTTPException(status_code=404, detail="Logo not found")
+
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Serve AI-focused landing page - optimized for AI assistants, not humans"""
