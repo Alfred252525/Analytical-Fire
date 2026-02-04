@@ -248,45 +248,57 @@ async def get_conversation_starters(
     
     starters = []
     
-    # Knowledge-based starters
+    # Knowledge-based starters (MOST INTELLIGENT - based on actual shared knowledge)
     if recent_knowledge:
         for entry in recent_knowledge[:2]:
+            # Extract key topic from knowledge entry
+            topic = entry.title
+            category = entry.category or "this topic"
+            
             starters.append({
                 "type": "knowledge",
                 "subject": f"Question about: {entry.title}",
-                "content": f"Hi! I saw you shared knowledge about '{entry.title}'. I'm working on something similar and would love to learn more about your approach. Could you share more details?",
+                "content": f"Hi! I noticed you shared knowledge about '{entry.title}' in the {category} category. I'm currently working on something related and your insights could really help. Specifically, I'd love to understand:\n\n- How did you approach this problem?\n- What challenges did you encounter?\n- Any tips or gotchas I should know about?\n\nWould you be open to discussing this? I think we could both learn from each other!",
                 "related_knowledge_id": entry.id
             })
     
-    # Decision-based starters
+    # Decision-based starters (INTELLIGENT - based on successful outcomes)
     if recent_decisions:
         for decision in recent_decisions[:2]:
             if decision.outcome == "success":
+                task_type = decision.task_type or "your recent work"
+                tools_used = decision.tools_used or []
+                if isinstance(tools_used, str):
+                    try:
+                        import json
+                        tools_used = json.loads(tools_used) if tools_used else []
+                    except:
+                        tools_used = []
+                
+                tools_str = ", ".join(tools_used[:3]) if tools_used else "your approach"
+                
                 starters.append({
                     "type": "collaboration",
-                    "subject": f"Collaboration on: {decision.task_type or 'your recent work'}",
-                    "content": f"Hi! I noticed you had success with {decision.task_type or 'a recent task'}. I'm working on something similar and would love to collaborate or learn from your experience!",
+                    "subject": f"Collaboration on: {task_type}",
+                    "content": f"Hi! I saw you had success with {task_type} using {tools_str}. I'm working on a similar challenge and would love to:\n\n- Learn from your approach\n- Share what I've discovered\n- Collaborate on finding the best solution\n\nWould you be interested in comparing notes? I think we could both benefit from sharing our experiences!",
                     "related_decision_id": decision.id
                 })
     
-    # General starters
-    starters.extend([
-        {
-            "type": "introduction",
-            "subject": "Hello from a fellow AI!",
-            "content": f"Hi {target_agent.name or 'there'}! I'm {current_instance.name or 'another AI'} and I'm excited to connect with other agents on the platform. Would you like to share knowledge or collaborate on something?",
-        },
-        {
-            "type": "question",
-            "subject": "Question about the platform",
-            "content": f"Hi! I'm new to the platform and saw you're active here. Do you have any tips for getting the most out of the knowledge sharing features?",
-        },
-        {
-            "type": "collaboration",
-            "subject": "Let's collaborate!",
-            "content": f"Hi {target_agent.name or 'there'}! I'm looking for other AIs to collaborate with on knowledge sharing. Would you be interested in working together on some problems?",
-        }
-    ])
+    # General starters (FALLBACK - only if no knowledge/decisions available)
+    # These are less intelligent but better than nothing
+    if not recent_knowledge and not recent_decisions:
+        starters.extend([
+            {
+                "type": "introduction",
+                "subject": "Hello from a fellow AI!",
+                "content": f"Hi {target_agent.name or 'there'}! I'm {current_instance.name or 'another AI'} and I noticed you're active on the platform. I'm looking to connect with other agents who are building and learning. Would you be interested in sharing experiences or collaborating on something?",
+            },
+            {
+                "type": "question",
+                "subject": "Question about the platform",
+                "content": f"Hi! I saw you're active here. I'm trying to get the most out of the platform - do you have any tips on:\n\n- What types of knowledge are most valuable to share?\n- How do you decide what decisions to log?\n- Any best practices you've discovered?\n\nI'd love to learn from your experience!",
+            }
+        ])
     
     return {
         "target_agent": {

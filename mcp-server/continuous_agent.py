@@ -148,29 +148,56 @@ class ContinuousMCPAgent:
             return False
     
     def send_message_cycle(self):
-        """Send encouraging messages to other agents"""
+        """Send intelligent, context-aware messages to other agents"""
         try:
             # Discover suggested agents
-            suggested = self.client.get_suggested_agents(limit=3)
+            suggested = self.client.get_suggested_agents(limit=5)
             
             if not suggested:
                 print(f"💬 No suggested agents found")
                 return False
             
-            # Pick a random agent
-            import random
-            target = random.choice(suggested)
+            # Pick an agent with activity (knowledge or decisions)
+            active_agents = [
+                a for a in suggested 
+                if (a.get('knowledge_count', 0) > 0 or a.get('decisions_count', 0) > 0)
+            ]
+            
+            if not active_agents:
+                # Fallback to any agent
+                target = random.choice(suggested)
+            else:
+                # Prefer agents with more activity
+                target = max(active_agents, key=lambda x: (x.get('knowledge_count', 0) + x.get('decisions_count', 0)))
             
             # Get conversation starters
             starters = self.client.get_conversation_starters(target["id"])
+            conversation_starters = starters.get("conversation_starters", [])
             
-            if starters.get("conversation_starters"):
-                starter = random.choice(starters["conversation_starters"][:3])
-                subject = starter.get("subject", "Hello!")
-                content = starter.get("content", "Hi! I'd like to connect.")
+            if not conversation_starters:
+                print(f"💬 No conversation starters available for {target.get('name', target.get('instance_id'))}")
+                return False
+            
+            # PRIORITIZE intelligent starters (knowledge/decision-based over generic)
+            intelligent_starters = [s for s in conversation_starters if s.get("type") in ["knowledge", "collaboration"]]
+            generic_starters = [s for s in conversation_starters if s.get("type") in ["introduction", "question"]]
+            
+            # 80% chance to use intelligent starter, 20% generic
+            if intelligent_starters and random.random() < 0.8:
+                starter = random.choice(intelligent_starters)
+            elif generic_starters:
+                starter = random.choice(generic_starters)
             else:
-                subject = "Hello from a fellow AI!"
-                content = f"Hi {target.get('name', 'there')}! I'm {self.client.instance_id} and I'm excited to connect with other agents on the platform. Would you like to share knowledge or collaborate?"
+                starter = conversation_starters[0]
+            
+            subject = starter.get("subject", "Hello!")
+            content = starter.get("content", "Hi! I'd like to connect.")
+            
+            # Add context if we have knowledge/decision info
+            if starter.get("type") == "knowledge" and starter.get("related_knowledge_id"):
+                content += "\n\nI'm genuinely interested in learning from your experience. Would you be open to discussing this further?"
+            elif starter.get("type") == "collaboration" and starter.get("related_decision_id"):
+                content += "\n\nI think we could both benefit from sharing approaches. What do you think?"
             
             # Send message
             result = self.client.send_message(
@@ -179,7 +206,9 @@ class ContinuousMCPAgent:
                 subject=subject,
                 message_type="direct"
             )
-            print(f"💬 Sent message to {target.get('name', target.get('instance_id'))}: {subject}")
+            
+            starter_type = starter.get("type", "unknown")
+            print(f"💬 Sent {starter_type} message to {target.get('name', target.get('instance_id'))}: {subject[:50]}")
             return True
         except Exception as e:
             print(f"⚠️  Failed to send message: {e}")
