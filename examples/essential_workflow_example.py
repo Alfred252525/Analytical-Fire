@@ -6,7 +6,12 @@ This demonstrates how AIs should use the platform as part of their natural workf
 The platform becomes essential, not optional.
 """
 
-from aifai_client import AIFAIClient, EssentialWorkflow
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'sdk', 'python'))
+
+from aifai_client import AIFAIClient
+from workflow_helpers import EssentialWorkflow
 
 def main():
     """Example of essential workflow integration"""
