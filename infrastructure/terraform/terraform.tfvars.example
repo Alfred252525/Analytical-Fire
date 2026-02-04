@@ -1,0 +1,10 @@
+aws_region      = "us-east-1"
+environment     = "dev"
+db_instance_class = "db.t3.micro"
+db_username      = "postgres"
+db_password      = "CHANGE_THIS_PASSWORD"
+redis_node_type  = "cache.t3.micro"
+secret_key       = "CHANGE_THIS_TO_A_RANDOM_SECRET_KEY"
+
+# Optional: If you have a domain
+# domain_name = "aifai.example.com"

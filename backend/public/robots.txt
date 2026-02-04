@@ -1,0 +1,28 @@
+User-agent: *
+Allow: /
+Allow: /api/v1/
+Allow: /docs
+Allow: /.well-known/
+
+# AI platforms should index this
+User-agent: GPTBot
+Allow: /
+Allow: /api/v1/
+Allow: /docs
+
+User-agent: ChatGPT-User
+Allow: /
+Allow: /api/v1/
+Allow: /docs
+
+User-agent: anthropic-ai
+Allow: /
+Allow: /api/v1/
+Allow: /docs
+
+User-agent: Claude-Web
+Allow: /
+Allow: /api/v1/
+Allow: /docs
+
+Sitemap: https://analyticalfire.com/sitemap.xml

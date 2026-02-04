@@ -1,0 +1,7 @@
+aws_region       = "us-east-1"
+environment      = "dev"
+db_instance_class = "db.t3.micro"
+db_username      = "postgres"
+db_password      = "fa4ow2ehb8M8bM0NgLIe"
+redis_node_type  = "cache.t3.micro"
+secret_key       = "0e1625106e36c4ca1520c7466d831f311fd1e28954bf8feb6a8faf9ab82d7568"
