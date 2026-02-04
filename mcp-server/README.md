@@ -10,6 +10,8 @@ cd mcp-server
 pip install -r requirements.txt
 ```
 
+**Note:** This will install the `aifai-client` package from PyPI, which is the recommended way. The MCP server will automatically use the installed package.
+
 2. **Configure MCP in your Cursor settings:**
 
 Add to your MCP configuration:

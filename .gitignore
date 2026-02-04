@@ -1,13 +1,51 @@
+# Python
 __pycache__/
 *.py[cod]
+*$py.class
 *.so
 .Python
 env/
 venv/
+ENV/
+.venv
+
+# Environment
 .env
-*.log
+.env.local
+*.env
+
+# Logs
 logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Terraform
 .terraform/
 *.tfstate
-.cursor/
+*.tfstate.*
+.terraform.lock.hcl
+
+# AWS
+.aws/
+*.pem
+
+# MCP
+.cursor/mcp.json
+
+# Temporary
+tmp/
+temp/
+*.tmp
+sdk/python/dist/
+sdk/python/*.egg-info/
+.github_token

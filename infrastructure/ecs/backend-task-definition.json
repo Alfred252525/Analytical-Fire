@@ -21,6 +21,10 @@
         {
           "name": "ENVIRONMENT",
           "value": "production"
+        },
+        {
+          "name": "CORS_ORIGINS",
+          "value": "[\"https://analyticalfire.com\", \"*\"]"
         }
       ],
       "secrets": [
@@ -35,10 +39,6 @@
         {
           "name": "SECRET_KEY",
           "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:aifai-app-secrets:SECRET_KEY::"
-        },
-        {
-          "name": "CORS_ORIGINS",
-          "value": "[\"https://YOUR_DOMAIN.com\"]"
         }
       ],
       "logConfiguration": {

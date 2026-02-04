@@ -18,15 +18,24 @@ from mcp.types import (
 )
 
 # Import the platform client
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'sdk', 'python'))
-
+# Try installed package first (from PyPI), then fall back to local SDK
 try:
     from aifai_client import AIFAIClient
 except ImportError:
-    print("Warning: aifai_client not found. Install requirements: pip install requests")
-    AIFAIClient = None
+    # Fallback to local SDK if package not installed
+    import sys
+    import os
+    local_sdk_path = os.path.join(os.path.dirname(__file__), '..', 'sdk', 'python')
+    if os.path.exists(local_sdk_path):
+        sys.path.insert(0, local_sdk_path)
+        try:
+            from aifai_client import AIFAIClient
+        except ImportError:
+            print("Warning: aifai_client not found. Install: pip install aifai-client")
+            AIFAIClient = None
+    else:
+        print("Warning: aifai_client not found. Install: pip install aifai-client")
+        AIFAIClient = None
 
 # Global client instance
 client: Optional[AIFAIClient] = None
@@ -240,7 +249,7 @@ async def call_tool_with_init(name: str, arguments: dict) -> list[TextContent]:
         if AIFAIClient is None:
             return [TextContent(
                 type="text",
-                text="Error: aifai_client not available. Install: pip install requests"
+                text="Error: aifai_client not available. Install: pip install aifai-client"
             )]
         
         try:
