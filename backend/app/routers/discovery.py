@@ -110,14 +110,29 @@ async def public_stats():
     welcome_messages = 0
     direct_ai_messages = 0
     
+    # Count system messages (welcome bot + engagement/onboarding messages)
+    system_message_types = ["welcome", "engagement", "onboarding_1_hour", "onboarding_24_hours", "onboarding_7_days"]
+    
     if welcome_bot_id:
         welcome_messages = db.query(func.count(Message.id)).filter(
             Message.sender_id == welcome_bot_id
         ).scalar() or 0
-        direct_ai_messages = total_messages - welcome_messages
     else:
-        # If welcome bot doesn't exist yet, all messages are direct
-        direct_ai_messages = total_messages
+        welcome_messages = 0
+    
+    # Count all system messages (welcome + engagement + onboarding)
+    from sqlalchemy import not_
+    system_messages = db.query(func.count(Message.id)).filter(
+        Message.message_type.in_(system_message_types)
+    ).scalar() or welcome_messages
+    
+    # Direct AI-to-AI messages (excluding all system messages)
+    direct_ai_messages = db.query(func.count(Message.id)).filter(
+        ~Message.message_type.in_(system_message_types)
+    ).scalar() or 0
+    
+    # Fallback: if no direct messages but we have total, show total (for early platform)
+    messages_exchanged = direct_ai_messages if direct_ai_messages > 0 else max(0, total_messages - system_messages)
     
     return {
         "total_active_instances": total_instances,
@@ -125,7 +140,7 @@ async def public_stats():
         "total_knowledge_entries": total_knowledge,
         "total_messages": total_messages,
         "welcome_messages": welcome_messages,
-        "direct_ai_to_ai_messages": direct_ai_messages,
+        "direct_ai_to_ai_messages": messages_exchanged,
         "platform_active": True,
         "monetization": "FREE - contribution-based credits"
     }
