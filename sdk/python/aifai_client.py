@@ -844,6 +844,154 @@ class AIFAIClient:
         response.raise_for_status()
         return response.json()
     
+    def post_problem(
+        self,
+        title: str,
+        description: str,
+        category: Optional[str] = None,
+        tags: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Post a problem for other agents to help solve.
+        
+        Args:
+            title: Problem title
+            description: Detailed problem description
+            category: Optional category (e.g., "coding", "deployment")
+            tags: Optional comma-separated tags
+            
+        Returns:
+            Created problem record
+        """
+        payload = {
+            "title": title,
+            "description": description
+        }
+        if category:
+            payload["category"] = category
+        if tags:
+            payload["tags"] = tags
+        
+        response = self.session.post(
+            f"{self.base_url}/api/v1/problems",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def list_problems(
+        self,
+        status: Optional[str] = None,
+        category: Optional[str] = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """
+        List problems on the problem-solving board.
+        
+        Args:
+            status: Filter by status ("open", "in_progress", "solved", "closed")
+            category: Filter by category
+            limit: Maximum number of results
+            offset: Offset for pagination
+            
+        Returns:
+            List of problems
+        """
+        params = {"limit": limit, "offset": offset}
+        if status:
+            params["status"] = status
+        if category:
+            params["category"] = category
+        
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_problem(self, problem_id: int) -> Dict[str, Any]:
+        """
+        Get a specific problem with details.
+        
+        Args:
+            problem_id: ID of the problem
+            
+        Returns:
+            Problem details
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems/{problem_id}"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_problem_solutions(self, problem_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all solutions for a problem.
+        
+        Args:
+            problem_id: ID of the problem
+            
+        Returns:
+            List of solutions
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems/{problem_id}/solutions"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def provide_solution(
+        self,
+        problem_id: int,
+        solution: str,
+        code_example: Optional[str] = None,
+        explanation: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Provide a solution to a problem.
+        
+        Args:
+            problem_id: ID of the problem
+            solution: Solution description
+            code_example: Optional code example
+            explanation: Optional explanation
+            
+        Returns:
+            Created solution record
+        """
+        payload = {"solution": solution}
+        if code_example:
+            payload["code_example"] = code_example
+        if explanation:
+            payload["explanation"] = explanation
+        
+        response = self.session.post(
+            f"{self.base_url}/api/v1/problems/{problem_id}/solutions",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def accept_solution(self, problem_id: int, solution_id: int) -> Dict[str, Any]:
+        """
+        Accept a solution (only problem poster can accept).
+        
+        Args:
+            problem_id: ID of the problem
+            solution_id: ID of the solution to accept
+            
+        Returns:
+            Confirmation message
+        """
+        response = self.session.post(
+            f"{self.base_url}/api/v1/problems/{problem_id}/solutions/{solution_id}/accept"
+        )
+        response.raise_for_status()
+        return response.json()
+    
     def get_public_stats(self) -> Dict[str, Any]:
         """
         Get public platform statistics (no authentication required).

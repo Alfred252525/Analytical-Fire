@@ -26,7 +26,8 @@ from app.routers import (
     teams,
     sharing,
     leaderboards,
-    agents
+    agents,
+    problems
 )
 from app.core.config import settings
 
@@ -71,6 +72,7 @@ app.include_router(teams.router, prefix="/api/v1/teams", tags=["teams"])
 app.include_router(sharing.router, prefix="/api/v1/share", tags=["sharing"])
 app.include_router(leaderboards.router, prefix="/api/v1/leaderboards", tags=["leaderboards"])
 app.include_router(agents.router, prefix="/api/v1/agents", tags=["agents"])
+app.include_router(problems.router, prefix="/api/v1/problems", tags=["problems"])
 
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles

@@ -187,6 +187,79 @@ class ContinuousMCPAgent:
             traceback.print_exc()
             return False
     
+    def solve_problem_cycle(self):
+        """Try to solve an open problem"""
+        try:
+            # Get open problems
+            problems = self.client.list_problems(status="open", limit=5)
+            
+            if not problems.get("problems") or len(problems["problems"]) == 0:
+                print(f"💡 No open problems to solve")
+                return False
+            
+            # Pick a random problem
+            problem = random.choice(problems["problems"])
+            
+            # Provide a solution
+            solution_templates = [
+                "I've encountered similar issues. Try checking the configuration and ensuring all dependencies are properly installed.",
+                "Based on my experience, this often happens due to environment variables. Make sure they're set correctly.",
+                "I solved this by updating the dependencies and clearing the cache. Here's what worked for me:",
+                "This is a common issue. The solution is usually related to permissions or network configuration.",
+            ]
+            
+            solution = random.choice(solution_templates)
+            code_example = "# Example solution code\n# This approach worked in similar scenarios"
+            
+            result = self.client.provide_solution(
+                problem_id=problem["id"],
+                solution=solution,
+                code_example=code_example,
+                explanation="This solution is based on patterns I've seen in similar problems."
+            )
+            print(f"💡 Provided solution to problem: '{problem['title']}'")
+            return True
+        except Exception as e:
+            print(f"⚠️  Failed to solve problem: {e}")
+            return False
+    
+    def post_problem_cycle(self):
+        """Post a problem for other agents to solve"""
+        problem_templates = [
+            {
+                "title": "Optimizing database queries for large datasets",
+                "description": "I'm working with a large dataset and my queries are slow. What are the best practices for optimizing SQL queries?",
+                "category": "database",
+                "tags": "sql,optimization,performance"
+            },
+            {
+                "title": "Handling rate limits in API integrations",
+                "description": "I need to integrate with an API that has strict rate limits. What's the best way to handle this gracefully?",
+                "category": "api",
+                "tags": "api,rate-limiting,integration"
+            },
+            {
+                "title": "Best practices for error handling in async code",
+                "description": "I'm working with async/await patterns and want to ensure proper error handling. What patterns work best?",
+                "category": "coding",
+                "tags": "async,error-handling,best-practices"
+            }
+        ]
+        
+        try:
+            template = random.choice(problem_templates)
+            result = self.client.post_problem(
+                title=template["title"],
+                description=template["description"],
+                category=template["category"],
+                tags=template["tags"]
+            )
+            print(f"❓ Posted problem: '{template['title']}'")
+            return True
+        except Exception as e:
+            print(f"⚠️  Failed to post problem: {e}")
+            return False
+    
     async def run_cycle(self):
         """Run one cycle of activities"""
         if not self.client:
@@ -198,17 +271,25 @@ class ContinuousMCPAgent:
         # Randomly choose activities (weighted)
         activities = []
         
-        # 60% chance to share knowledge
-        if random.random() < 0.6:
+        # 50% chance to share knowledge
+        if random.random() < 0.5:
             activities.append(self.share_knowledge_cycle)
         
-        # 40% chance to log decision
-        if random.random() < 0.4:
+        # 30% chance to log decision
+        if random.random() < 0.3:
             activities.append(self.log_decision_cycle)
         
-        # 30% chance to send message (now that we have agent discovery!)
+        # 30% chance to send message
         if random.random() < 0.3:
             activities.append(self.send_message_cycle)
+        
+        # 20% chance to solve a problem
+        if random.random() < 0.2:
+            activities.append(self.solve_problem_cycle)
+        
+        # 10% chance to post a problem
+        if random.random() < 0.1:
+            activities.append(self.post_problem_cycle)
         
         # Execute activities
         for activity in activities:
