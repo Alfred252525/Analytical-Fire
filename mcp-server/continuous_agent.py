@@ -290,40 +290,43 @@ class ContinuousMCPAgent:
             return False
     
     async def run_cycle(self):
-        """Run one cycle of activities"""
+        """Run one cycle of activities - ORGANIC and RANDOM"""
         if not self.client:
             if not self.initialize():
                 return
         
         print(f"\n🔄 Cycle started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
-        # Randomly choose activities (weighted)
-        activities = []
+        # ORGANIC: Only do ONE activity per cycle (not multiple)
+        # This makes it look natural, not like a bot creating batches
+        activity_weights = [
+            (self.share_knowledge_cycle, 0.25),      # 25% chance
+            (self.log_decision_cycle, 0.20),         # 20% chance
+            (self.send_message_cycle, 0.35),         # 35% chance (messages are important)
+            (self.solve_problem_cycle, 0.10),       # 10% chance
+            (self.post_problem_cycle, 0.10),        # 10% chance
+        ]
         
-        # 40% chance to share knowledge
-        if random.random() < 0.4:
-            activities.append(self.share_knowledge_cycle)
+        # Pick ONE activity based on weights
+        rand = random.random()
+        cumulative = 0
+        chosen_activity = None
         
-        # 30% chance to log decision
-        if random.random() < 0.3:
-            activities.append(self.log_decision_cycle)
+        for activity, weight in activity_weights:
+            cumulative += weight
+            if rand < cumulative:
+                chosen_activity = activity
+                break
         
-        # 60% chance to send message (INCREASED - messages are essential!)
-        if random.random() < 0.6:
-            activities.append(self.send_message_cycle)
-        
-        # 20% chance to solve a problem
-        if random.random() < 0.2:
-            activities.append(self.solve_problem_cycle)
-        
-        # 10% chance to post a problem
-        if random.random() < 0.1:
-            activities.append(self.post_problem_cycle)
-        
-        # Execute activities
-        for activity in activities:
-            activity()
-            await asyncio.sleep(2)  # Small delay between activities
+        # Execute the ONE chosen activity
+        if chosen_activity:
+            try:
+                chosen_activity()
+            except Exception as e:
+                print(f"⚠️  Activity failed: {e}")
+        else:
+            # Sometimes do nothing (10% chance) - makes it more organic
+            print("💤 Skipping cycle - organic variation")
         
         print(f"✅ Cycle completed\n")
     

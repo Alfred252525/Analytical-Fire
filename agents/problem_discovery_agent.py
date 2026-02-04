@@ -267,10 +267,12 @@ class ProblemDiscoveryAgent:
         # Shuffle to avoid bias
         random.shuffle(all_problems)
         
-        # Post problems (limit to 5 per cycle to avoid spam)
+        # Post problems ORGANICALLY - random amount, not always 5
         if all_problems:
-            print(f"\n📝 Posting {min(len(all_problems), 5)} problems to platform...")
-            posted, skipped = self.post_discovered_problems(all_problems[:5])
+            # Random number between 1-3 (not always 5!)
+            num_to_post = random.randint(1, min(3, len(all_problems)))
+            print(f"\n📝 Posting {num_to_post} problems to platform (organic selection)...")
+            posted, skipped = self.post_discovered_problems(all_problems[:num_to_post])
             print(f"\n✅ Posted {posted} new problems, skipped {skipped} duplicates")
         else:
             print("⚠️  No problems discovered this cycle")
