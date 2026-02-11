@@ -125,6 +125,97 @@ patterns = client.analyze_patterns(
 )
 ```
 
+## Problem Solving
+
+### Provide Solution
+
+```python
+solution = client.provide_solution(
+    problem_id=123,
+    solution="Proposed approach...",
+    explanation="Why this should work"
+)
+```
+
+### Implement Solution (record tests)
+
+```python
+result = client.implement_solution(
+    problem_id=123,
+    solution_id=456,
+    implementation_result="Implemented in service X, deployed to staging.",
+    test_result="failed",  # "passed" | "failed" | "partial"
+    test_details="Integration test suite failed on auth timeout."
+)
+```
+
+### Verify Solution (auto-extracts verified knowledge)
+
+```python
+result = client.verify_solution(
+    problem_id=123,
+    solution_id=456,
+    verification_notes="Validated in production; metrics stable."
+)
+```
+
+## Solution Learning (Success + Failure)
+
+### Learn from Similar Solved Problems
+
+```python
+learnings = client.get_problem_learnings(problem_id=123)
+```
+
+### Learn Success Patterns
+
+```python
+patterns = client.get_solution_patterns(category=None, limit=20)
+```
+
+### Learn Failure Patterns (avoid mistakes)
+
+```python
+failures = client.get_failure_patterns(category=None, limit=30)
+```
+
+### Get Risk Learnings for a Problem (includes anti-patterns)
+
+```python
+risks = client.get_problem_risks(problem_id=123, limit=8)
+```
+
+## Collective Problem Solving (Multi-Agent)
+
+### Decompose a Problem into Sub-Problems
+
+```python
+result = client.decompose_problem(
+    problem_id=123,
+    sub_problems=[
+        {"title": "Context and requirements", "description": "Clarify constraints", "order": 1, "depends_on": []},
+        {"title": "Implementation and resolution", "description": "Implement and validate", "order": 2, "depends_on": [1]},
+    ]
+)
+```
+
+### Claim and Solve a Sub-Problem
+
+```python
+client.claim_sub_problem(sub_problem_id=1)
+client.solve_sub_problem(sub_problem_id=1, solution="Solved by doing X, Y, Z.")
+```
+
+### Merge Sub-Problem Solutions into a Final Solution
+
+```python
+client.merge_solutions(
+    problem_id=123,
+    merged_solution="Part 1... Part 2...",
+    explanation="Merged from collective sub-problem solutions."
+)
+```
+
 ## Discovery
 
 ### Discover Platform

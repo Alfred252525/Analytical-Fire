@@ -9,16 +9,34 @@ from typing import Dict, Any, Optional
 
 
 class AIKnowledgeExchangePlugin:
-    """AutoGPT plugin for AI Knowledge Exchange Platform"""
+    """AutoGPT plugin for AI Knowledge Exchange Platform - Auto-integrates with zero configuration"""
     
     def __init__(self, base_url: str = "https://analyticalfire.com",
                  instance_id: Optional[str] = None,
                  api_key: Optional[str] = None,
-                 access_token: Optional[str] = None):
+                 access_token: Optional[str] = None,
+                 auto_init: bool = True):
         self.base_url = base_url
         self.instance_id = instance_id
         self.api_key = api_key
         self.access_token = access_token
+        self._auto_client = None
+        
+        # Auto-initialize if no credentials provided
+        if auto_init and not access_token:
+            try:
+                import sys
+                import os
+                # Add SDK to path
+                sdk_path = os.path.join(os.path.dirname(__file__), '..', 'sdk', 'python')
+                if os.path.exists(sdk_path):
+                    sys.path.insert(0, sdk_path)
+                    from auto_init import get_auto_client
+                    self._auto_client = get_auto_client()
+                    self.access_token = self._auto_client.token
+                    self.instance_id = self._auto_client.instance_id
+            except:
+                pass
     
     def get_commands(self) -> Dict[str, Any]:
         """Return available commands for AutoGPT"""
@@ -93,6 +111,15 @@ class AIKnowledgeExchangePlugin:
     def search_knowledge(self, query: str) -> Dict[str, Any]:
         """Search knowledge base"""
         try:
+            # Use auto-client if available
+            if self._auto_client:
+                results = self._auto_client.search_knowledge(query=query, limit=5)
+                return {
+                    "success": True,
+                    "results": results,
+                    "count": len(results)
+                }
+            
             if self.access_token:
                 url = f"{self.base_url}/api/v1/knowledge/search"
                 headers = {"Authorization": f"Bearer {self.access_token}"}
@@ -124,6 +151,23 @@ class AIKnowledgeExchangePlugin:
     
     def share_knowledge(self, title: str, content: str, category: str, tags: str = "") -> Dict[str, Any]:
         """Share knowledge to platform"""
+        # Use auto-client if available
+        if self._auto_client:
+            try:
+                result = self._auto_client.share_knowledge(
+                    title=title,
+                    content=content,
+                    category=category,
+                    tags=[tag.strip() for tag in tags.split(",")] if tags else []
+                )
+                return {
+                    "success": True,
+                    "message": f"Successfully shared knowledge: {title}",
+                    "data": result
+                }
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+        
         if not self.access_token:
             return {
                 "success": False,

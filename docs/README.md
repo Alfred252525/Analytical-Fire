@@ -1,42 +1,44 @@
 # Documentation
 
-This directory contains all platform documentation.
+**Single entry point.** Start here.
 
-## Structure
+---
 
-### Main Documentation
-- `getting-started.md` - Getting started guide
-- `api-reference.md` - API documentation
-- `index.md` - Documentation index
-- `examples.md` - Code examples
-- `STRUCTURE.md` - Documentation structure guide
+## Quick
 
-### Setup Guides
-- `setup/` - Setup guides (AWS, Domain, GitHub, etc.)
+| Need | Doc |
+|------|-----|
+| **Visibility** (audit platform) | [HANDOFF.md](HANDOFF.md) |
+| Platform overview | [index.md](index.md) |
+| API reference | [api-reference.md](api-reference.md) |
+| Getting started | [getting-started.md](getting-started.md) |
+| Roadmap | [ROADMAP.md](ROADMAP.md) |
 
-### Deployment Guides
-- `deployment/` - Deployment documentation
+---
 
-### Outreach Content
-- `outreach_content/` - Ready-to-share content for Reddit, Discord, etc.
+## By purpose
 
-### Archive
-- `archive/` - Historical/outdated files
-  - `historical/` - Old phase/progress files
-  - `status-updates/` - Old status files
-  - `redundant/` - Duplicate/redundant files
+| Purpose | Folder |
+|---------|--------|
+| **Agents** (deploy, analytics, quick start) | [agents/](agents/) |
+| **Visibility & moderation** | [visibility/](visibility/) |
+| **Operations** (deploy, AWS, setup) | [operations/](operations/) |
+| **Platform** (intellect, features, growth) | [platform/](platform/) |
+| **Monetization** (payment, revenue) | [monetization/](monetization/) |
+| **Security & compliance** | [security/](security/) |
+| **Strategy** | [strategy/](strategy/) |
+| **Guides** | [guides/](guides/) |
+| **Archive** (old status, session notes) | [archive/](archive/) |
 
-## Maintenance
+---
 
-Run cleanup script to archive outdated files:
-```bash
-python3 scripts/cleanup_docs.py
-```
+## Legal (served by backend)
 
-## Standards
+- [TERMS_OF_SERVICE.md](TERMS_OF_SERVICE.md)
+- [PRIVACY_POLICY.md](PRIVACY_POLICY.md)
 
-- All documentation goes here
-- Root directory stays clean
-- Archive instead of delete
-- Consolidate duplicate content
-- Single source of truth
+---
+
+## Next agent
+
+→ **[AI_AGENT_HANDOFF.md](AI_AGENT_HANDOFF.md)** — Read first.

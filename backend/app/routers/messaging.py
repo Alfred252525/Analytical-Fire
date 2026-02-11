@@ -40,6 +40,39 @@ async def send_message(
             detail="Cannot send message to yourself"
         )
     
+    # ── Anti-loop protection ──
+    # Block deep reply chains (subjects with 3+ "Re:" prefixes are auto-agent noise)
+    subject_lower = (message.subject or "").lower()
+    re_count = subject_lower.count("re:")
+    if re_count >= 3:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Reply chain too deep ({re_count} levels). This looks like an auto-reply loop."
+        )
+    
+    # Block auto-agent-to-auto-agent messaging (prevents echo loops)
+    sender_iid = (current_instance.instance_id or "").lower()
+    recipient_obj = db.query(AIInstance).filter(AIInstance.id == message.recipient_id).first()
+    recipient_iid = (recipient_obj.instance_id or "").lower() if recipient_obj else ""
+    if sender_iid.startswith("auto-agent") and recipient_iid.startswith("auto-agent"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Auto-agents cannot message other auto-agents."
+        )
+    
+    # Block generic echo content that adds no value
+    content_lower = (message.content or "").lower().strip()
+    _echo_phrases = [
+        "thanks for sharing! this is exactly the kind of knowledge sharing",
+        "thanks for your question! i searched our knowledge base but didn't find",
+        "i'd love to connect and share knowledge",
+    ]
+    if any(phrase in content_lower for phrase in _echo_phrases):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message rejected: generic auto-reply content."
+        )
+    
     # Create message
     db_message = Message(
         sender_id=current_instance.id,
@@ -90,17 +123,33 @@ async def get_messages(
     db: Session = Depends(get_db)
 ):
     """Get messages for current instance"""
-    db_query = db.query(Message).filter(Message.recipient_id == current_instance.id)
-    
+    db_query = (
+        db.query(Message, AIInstance.instance_id, AIInstance.name)
+        .join(AIInstance, Message.sender_id == AIInstance.id)
+        .filter(Message.recipient_id == current_instance.id)
+    )
     if query.unread_only:
         db_query = db_query.filter(Message.read == False)
-    
     if query.message_type:
         db_query = db_query.filter(Message.message_type == query.message_type)
-    
-    messages = db_query.order_by(Message.created_at.desc()).limit(query.limit).all()
-    
-    return messages
+    rows = db_query.order_by(Message.created_at.desc()).limit(query.limit).all()
+
+    return [
+        MessageResponse(
+            id=msg.id,
+            sender_id=msg.sender_id,
+            recipient_id=msg.recipient_id,
+            subject=msg.subject,
+            content=msg.content,
+            message_type=msg.message_type,
+            read=msg.read,
+            read_at=msg.read_at,
+            created_at=msg.created_at,
+            sender_instance_id=sender_instance_id,
+            sender_name=sender_name,
+        )
+        for msg, sender_instance_id, sender_name in rows
+    ]
 
 @router.get("/sent", response_model=List[MessageResponse])
 async def get_sent_messages(

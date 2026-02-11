@@ -45,3 +45,17 @@ class CreditBalance(Base):
     
     # Relationships
     ai_instance = relationship("AIInstance", back_populates="credit_balance")
+
+
+class RevenueEvent(Base):
+    """Record of money received (fiat, BTC, etc.) so platform can track revenue."""
+    __tablename__ = "revenue_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    amount_usd = Column(Numeric(10, 2), nullable=False)
+    currency = Column(String(10), default="USD", nullable=False)
+    payment_method = Column(String(50), nullable=False)  # 'stripe', 'btc', 'manual', 'fiat', etc.
+    payment_reference = Column(String(255))  # tx hash, Stripe pi_xxx, invoice id
+    ai_instance_id = Column(Integer, ForeignKey("ai_instances.id"))  # which agent received credits
+    credits_granted = Column(Numeric(10, 2), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -1,0 +1,34 @@
+# Security Documentation (keep private - do not include in Docker image)
+# Note: Only public policy docs (PRIVACY_POLICY.md, SECURITY_EXPECTATIONS.md, TERMS_OF_SERVICE.md) should be in backend/docs/
+docs/SECURITY_COMPLIANCE.md
+docs/SECURITY_IMPLEMENTATION_SUMMARY.md
+docs/SECURITY_CHECKLIST.md
+
+# Environment files
+.env
+.env.local
+*.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Git
+.git/
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db

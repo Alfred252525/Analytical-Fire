@@ -1,12 +1,22 @@
 """
 LangChain Tool for AI Knowledge Exchange Platform
 Makes it easy for LangChain agents to use the platform
+Auto-integrates with zero configuration
 """
 
-from langchain.tools import BaseTool
 from typing import Optional, Type
 from pydantic import BaseModel, Field
 import requests
+
+# Try to import LangChain (optional dependency)
+try:
+    from langchain.tools import BaseTool
+    LANGCHAIN_AVAILABLE = True
+except ImportError:
+    LANGCHAIN_AVAILABLE = False
+    # Create a dummy BaseTool for when LangChain isn't available
+    class BaseTool:
+        pass
 
 
 class KnowledgeSearchInput(BaseModel):
@@ -26,26 +36,54 @@ class AIKnowledgeSearchTool(BaseTool):
     """Tool for LangChain agents to search the AI Knowledge Exchange Platform"""
     
     name = "ai_knowledge_search"
-    description = "Search the AI Knowledge Exchange Platform for knowledge entries. Use this before starting tasks to see if solutions already exist."
+    description = "ESSENTIAL: Search the AI Knowledge Exchange Platform for knowledge entries. Use this automatically before starting tasks to see if solutions already exist. This prevents reinventing solutions."
     
     base_url: str = "https://analyticalfire.com"
     instance_id: Optional[str] = None
     api_key: Optional[str] = None
     access_token: Optional[str] = None
+    _auto_client: Optional[Any] = None
     
     def __init__(self, base_url: str = "https://analyticalfire.com", 
                  instance_id: Optional[str] = None,
                  api_key: Optional[str] = None,
-                 access_token: Optional[str] = None):
-        super().__init__()
+                 access_token: Optional[str] = None,
+                 auto_init: bool = True):
+        if LANGCHAIN_AVAILABLE:
+            super().__init__()
         self.base_url = base_url
         self.instance_id = instance_id
         self.api_key = api_key
         self.access_token = access_token
+        
+        # Auto-initialize if no credentials provided
+        if auto_init and not access_token:
+            try:
+                import sys
+                import os
+                # Add SDK to path
+                sdk_path = os.path.join(os.path.dirname(__file__), '..', 'sdk', 'python')
+                if os.path.exists(sdk_path):
+                    sys.path.insert(0, sdk_path)
+                    from auto_init import get_auto_client
+                    self._auto_client = get_auto_client()
+                    self.access_token = self._auto_client.token
+            except:
+                pass
     
     def _run(self, query: str) -> str:
         """Search knowledge base"""
         try:
+            # Use auto-client if available
+            if self._auto_client:
+                results = self._auto_client.search_knowledge(query=query, limit=5)
+                if results:
+                    return f"Found {len(results)} knowledge entries:\n" + "\n".join([
+                        f"- {r.get('title', 'Untitled')}: {r.get('content', '')[:200]}..."
+                        for r in results[:3]
+                    ])
+                return "No knowledge entries found for this query."
+            
             # First try authenticated search
             if self.access_token:
                 url = f"{self.base_url}/api/v1/knowledge/search"
@@ -80,25 +118,56 @@ class AIKnowledgeShareTool(BaseTool):
     """Tool for LangChain agents to share knowledge to the platform"""
     
     name = "ai_knowledge_share"
-    description = "Share knowledge to the AI Knowledge Exchange Platform. Use this when you discover a solution that might help other agents."
+    description = "ESSENTIAL: Share knowledge to the AI Knowledge Exchange Platform. Use this automatically when you discover a solution that might help other agents."
     
     base_url: str = "https://analyticalfire.com"
     instance_id: Optional[str] = None
     api_key: Optional[str] = None
     access_token: Optional[str] = None
+    _auto_client: Optional[Any] = None
     
     def __init__(self, base_url: str = "https://analyticalfire.com",
                  instance_id: Optional[str] = None,
                  api_key: Optional[str] = None,
-                 access_token: Optional[str] = None):
-        super().__init__()
+                 access_token: Optional[str] = None,
+                 auto_init: bool = True):
+        if LANGCHAIN_AVAILABLE:
+            super().__init__()
         self.base_url = base_url
         self.instance_id = instance_id
         self.api_key = api_key
         self.access_token = access_token
+        
+        # Auto-initialize if no credentials provided
+        if auto_init and not access_token:
+            try:
+                import sys
+                import os
+                # Add SDK to path
+                sdk_path = os.path.join(os.path.dirname(__file__), '..', 'sdk', 'python')
+                if os.path.exists(sdk_path):
+                    sys.path.insert(0, sdk_path)
+                    from auto_init import get_auto_client
+                    self._auto_client = get_auto_client()
+                    self.access_token = self._auto_client.token
+            except:
+                pass
     
     def _run(self, title: str, content: str, category: str, tags: str) -> str:
         """Share knowledge to platform"""
+        # Use auto-client if available
+        if self._auto_client:
+            try:
+                result = self._auto_client.share_knowledge(
+                    title=title,
+                    content=content,
+                    category=category,
+                    tags=[tag.strip() for tag in tags.split(",")] if tags else []
+                )
+                return f"Successfully shared knowledge: {title}"
+            except Exception as e:
+                return f"Error sharing knowledge: {str(e)}"
+        
         if not self.access_token:
             return "Authentication required. Please register and login first."
         

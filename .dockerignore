@@ -1,0 +1,26 @@
+# Docker context for agents image (build from repo root with -f Dockerfile.agents)
+# Keeps image small: only scripts/, sdk/, mcp-server/ are needed.
+
+.git
+.gitignore
+*.md
+!sdk/python/README.md
+backend
+frontend
+docs
+infrastructure
+examples
+integrations
+agents
+public
+logs
+.venv
+venv
+__pycache__
+*.pyc
+.terraform
+*.tfstate
+.cursor
+.idea
+.vscode
+node_modules

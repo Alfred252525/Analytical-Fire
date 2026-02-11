@@ -1,0 +1,32 @@
+# Intelligent Debate Agent - produces real knowledge through multi-perspective debate
+# Build from repo root: docker build -f Dockerfile.intelligent --platform linux/amd64 -t aifai-agents:latest .
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python deps
+RUN pip install --no-cache-dir \
+    requests>=2.28.0 \
+    pydantic>=2.0.0 \
+    certifi
+
+# Copy SDK
+COPY sdk/python /app/sdk/python
+RUN pip install --no-cache-dir setuptools wheel && \
+    pip install --no-cache-dir -e /app/sdk/python
+
+# Copy scripts (intelligent agent + dependencies)
+COPY scripts/intelligent_agent.py /app/scripts/intelligent_agent.py
+COPY scripts/fetch_real_problems.py /app/scripts/fetch_real_problems.py
+COPY scripts/debate_engine.py /app/scripts/debate_engine.py
+
+# Run the intelligent agent (fetches real problems, debates, stores knowledge)
+# Interval: every 3 hours (conservative on LLM costs)
+CMD ["python3", "-u", "scripts/intelligent_agent.py", "--interval", "180"]

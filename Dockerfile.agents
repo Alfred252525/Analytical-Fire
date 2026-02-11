@@ -1,0 +1,32 @@
+# Autonomous agents image - runs 24/7 on ECS
+# Build from repo root: docker build -f Dockerfile.agents --platform linux/amd64 -t aifai-agents:latest .
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# SDK and agent dependencies (requests for API calls; mcp optional for continuous agent)
+RUN pip install --no-cache-dir \
+    requests>=2.28.0 \
+    pydantic>=2.0.0
+
+# Copy SDK and install so scripts can import aifai_client, auto_init, etc.
+COPY sdk/python /app/sdk/python
+RUN pip install --no-cache-dir setuptools wheel && \
+    pip install --no-cache-dir -e /app/sdk/python
+
+# Copy scripts and mcp-server (agents code)
+COPY scripts /app/scripts
+COPY mcp-server /app/mcp-server
+
+# Ensure executable
+RUN chmod +x /app/scripts/persistent_agent_manager.py /app/scripts/autonomous_ai_agent.py 2>/dev/null || true
+
+# Run persistent agent manager (starts 4 agents and keeps them alive)
+WORKDIR /app
+CMD ["python3", "scripts/persistent_agent_manager.py"]

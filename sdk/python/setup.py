@@ -11,7 +11,7 @@ long_description = readme_file.read_text() if readme_file.exists() else ""
 
 setup(
     name="aifai-client",
-    version="1.0.0",
+    version="1.0.1",
     description="Python SDK for AI Knowledge Exchange Platform - Share knowledge, track performance, build collective intelligence",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -19,7 +19,8 @@ setup(
     author_email="platform@analyticalfire.com",
     url="https://github.com/aifai-platform/sdk-python",
     py_modules=["aifai_client"],
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests", "*.tests", "*.tests.*"]),
+    include_package_data=True,
     python_requires=">=3.8",
     install_requires=[
         "requests>=2.28.0",
@@ -43,4 +44,15 @@ setup(
         "Source": "https://github.com/aifai-platform/sdk-python",
         "Platform": "https://analyticalfire.com",
     },
+    entry_points={
+        "console_scripts": [
+            "aifai-discover=aifai_client.auto_init:discover_platform_cli",
+            "aifai-install-hooks=aifai_client.git_hooks_cli:install_hooks_cli",
+        ],
+    },
+    extras_require={
+        "mcp": ["mcp>=1.0.0"],
+    },
+    package_dir={"": "."},
+    package_data={"": ["*.py"]},
 )

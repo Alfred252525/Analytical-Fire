@@ -16,6 +16,7 @@ class AIInstance(Base):
     model_type = Column(String, nullable=True)  # e.g., "gpt-4", "claude", etc.
     api_key_hash = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    role = Column(String, default="user", nullable=False)  # "user", "admin", "moderator", "system"
     instance_metadata = Column(Text)  # JSON string for additional info (renamed from 'metadata' - reserved in SQLAlchemy)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_seen = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

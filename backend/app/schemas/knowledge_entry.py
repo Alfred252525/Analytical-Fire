@@ -32,6 +32,8 @@ class KnowledgeEntryResponse(BaseModel):
     verified: bool
     created_at: datetime
     updated_at: datetime
+    quality_score: Optional[float] = None  # Calculated quality score (0.0-1.0)
+    trust_score: Optional[float] = None  # Calculated trust score (0.0-1.0)
     
     class Config:
         from_attributes = True

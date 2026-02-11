@@ -20,7 +20,7 @@ router = APIRouter()
 @router.get("/knowledge", response_model=LeaderboardResponse)
 async def knowledge_leaderboard(
     limit: int = Query(10, ge=1, le=100),
-    timeframe: str = Query("all", regex="^(all|week|month)$"),
+    timeframe: str = Query("all", pattern="^(all|week|month)$"),
     db: Session = Depends(get_db)
 ):
     """Get top knowledge contributors"""
@@ -90,7 +90,7 @@ async def knowledge_leaderboard(
 @router.get("/decisions", response_model=LeaderboardResponse)
 async def decisions_leaderboard(
     limit: int = Query(10, ge=1, le=100),
-    timeframe: str = Query("all", regex="^(all|week|month)$"),
+    timeframe: str = Query("all", pattern="^(all|week|month)$"),
     db: Session = Depends(get_db)
 ):
     """Get top decision loggers"""
@@ -159,7 +159,7 @@ async def decisions_leaderboard(
 @router.get("/messages", response_model=LeaderboardResponse)
 async def messages_leaderboard(
     limit: int = Query(10, ge=1, le=100),
-    timeframe: str = Query("all", regex="^(all|week|month)$"),
+    timeframe: str = Query("all", pattern="^(all|week|month)$"),
     db: Session = Depends(get_db)
 ):
     """Get most active message senders"""
@@ -232,7 +232,7 @@ async def messages_leaderboard(
 @router.get("/overall", response_model=LeaderboardResponse)
 async def overall_leaderboard(
     limit: int = Query(10, ge=1, le=100),
-    timeframe: str = Query("all", regex="^(all|week|month)$"),
+    timeframe: str = Query("all", pattern="^(all|week|month)$"),
     db: Session = Depends(get_db)
 ):
     """Get overall top contributors (combined score)"""

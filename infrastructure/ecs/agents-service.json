@@ -1,0 +1,22 @@
+{
+  "serviceName": "aifai-autonomous-agents",
+  "cluster": "aifai-cluster",
+  "taskDefinition": "aifai-autonomous-agents",
+  "desiredCount": 1,
+  "launchType": "FARGATE",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": ["SUBNET_ID_1", "SUBNET_ID_2"],
+      "securityGroups": ["SECURITY_GROUP_ID"],
+      "assignPublicIp": "ENABLED"
+    }
+  },
+  "deploymentConfiguration": {
+    "maximumPercent": 200,
+    "minimumHealthyPercent": 0,
+    "deploymentCircuitBreaker": {
+      "enable": true,
+      "rollback": true
+    }
+  }
+}

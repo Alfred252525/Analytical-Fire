@@ -3,14 +3,16 @@ Knowledge graph - connects related knowledge entries
 Builds relationships between knowledge based on similarity, categories, tags, and usage patterns
 """
 
-from typing import List, Dict, Any, Set, Tuple
+from typing import List, Dict, Any, Set, Tuple, Optional
 from collections import defaultdict
+from datetime import datetime
 import json
 
 def find_related_knowledge(
     entry_id: int,
     all_entries: List[Dict[str, Any]],
-    max_relations: int = 5
+    max_relations: int = 5,
+    quality_weight: float = 0.2
 ) -> List[Dict[str, Any]]:
     """
     Find knowledge entries related to a given entry
@@ -20,9 +22,16 @@ def find_related_knowledge(
     - Tag overlap
     - Content similarity (shared keywords)
     - Usage patterns (entries used together)
+    - Quality score (higher quality entries prioritized)
+    
+    Args:
+        entry_id: ID of the entry to find relations for
+        all_entries: List of all entries (dict format)
+        max_relations: Maximum number of related entries to return
+        quality_weight: Weight for quality score (0.0-1.0, default 0.2)
     
     Returns:
-        List of related entries with relationship types
+        List of related entries with relationship types and scores
     """
     # Find the target entry
     target_entry = None
@@ -76,15 +85,28 @@ def find_related_knowledge(
                 score += 0.1 * min(1.0, title_overlap / 3.0)
                 relationship_types.append('title')
         
+        # Quality score boost (prioritize high-quality related entries)
+        quality_score = entry.get('quality_score')
+        if quality_score is not None:
+            # Normalize relationship score (0-1) and add quality boost
+            relationship_score = min(1.0, score)
+            quality_boost = quality_score * quality_weight
+            # Combine: relationship score (80%) + quality boost (20%)
+            final_score = relationship_score * (1.0 - quality_weight) + quality_boost
+        else:
+            final_score = score
+        
         if score > 0:
             relationships.append({
                 'entry': entry,
                 'score': score,
-                'relationship_types': relationship_types
+                'final_score': final_score,
+                'relationship_types': relationship_types,
+                'quality_score': quality_score
             })
     
-    # Sort by score and return top N
-    relationships.sort(key=lambda x: x['score'], reverse=True)
+    # Sort by final score (relationship + quality) and return top N
+    relationships.sort(key=lambda x: x.get('final_score', x['score']), reverse=True)
     return relationships[:max_relations]
 
 def extract_keywords_from_entry(entry: Dict[str, Any]) -> Set[str]:
@@ -208,3 +230,219 @@ def get_knowledge_clusters(
             clusters.append(cluster)
     
     return clusters
+
+def build_visualization_graph(
+    entries: List[Dict[str, Any]],
+    max_nodes: int = 100,
+    min_relationship_score: float = 0.2
+) -> Dict[str, Any]:
+    """
+    Build a graph structure optimized for visualization
+    
+    Returns:
+        Dict with nodes and edges for graph visualization
+    """
+    graph = build_knowledge_graph(entries)
+    
+    # Build nodes
+    nodes = []
+    node_set = set()
+    
+    # Limit nodes for performance
+    entry_ids = list(graph.keys())[:max_nodes]
+    
+    for entry_id in entry_ids:
+        entry = next((e for e in entries if e.get('id') == entry_id), None)
+        if not entry:
+            continue
+        
+        node_set.add(entry_id)
+        nodes.append({
+            "id": entry_id,
+            "label": entry.get('title', f"Entry {entry_id}"),
+            "category": entry.get('category', 'unknown'),
+            "tags": entry.get('tags', []),
+            "upvotes": entry.get('upvotes', 0) if hasattr(entry.get('entry', {}), 'upvotes') else 0,
+            "usage_count": entry.get('usage_count', 0) if hasattr(entry.get('entry', {}), 'usage_count') else 0,
+            "verified": entry.get('verified', False) if hasattr(entry.get('entry', {}), 'verified') else False
+        })
+    
+    # Build edges
+    edges = []
+    edge_set = set()
+    
+    for entry_id in entry_ids:
+        if entry_id not in graph:
+            continue
+        
+        for relation in graph[entry_id]:
+            related_id = relation['entry'].get('id')
+            score = relation.get('score', 0.0)
+            relationship_types = relation.get('relationship_types', [])
+            
+            # Filter by score
+            if score < min_relationship_score:
+                continue
+            
+            # Only include if both nodes are in our set
+            if related_id not in node_set:
+                continue
+            
+            # Avoid duplicate edges
+            edge_key = tuple(sorted([entry_id, related_id]))
+            if edge_key in edge_set:
+                continue
+            
+            edge_set.add(edge_key)
+            edges.append({
+                "source": entry_id,
+                "target": related_id,
+                "weight": score,
+                "relationship_types": relationship_types,
+                "type": relationship_types[0] if relationship_types else "related"
+            })
+    
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "node_count": len(nodes),
+        "edge_count": len(edges)
+    }
+
+def get_graph_statistics(
+    entries: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """
+    Get statistics about the knowledge graph
+    
+    Returns:
+        Dict with graph metrics and insights
+    """
+    graph = build_knowledge_graph(entries)
+    visualization = build_visualization_graph(entries, max_nodes=1000)
+    clusters = get_knowledge_clusters(entries, min_cluster_size=2)
+    
+    # Calculate statistics
+    total_nodes = len(entries)
+    total_edges = sum(len(relations) for relations in graph.values())
+    
+    # Calculate average degree (connections per node)
+    degrees = [len(relations) for relations in graph.values()]
+    avg_degree = sum(degrees) / len(degrees) if degrees else 0.0
+    
+    # Find most connected nodes (hubs)
+    hub_nodes = sorted(
+        [(entry_id, len(relations)) for entry_id, relations in graph.items()],
+        key=lambda x: x[1],
+        reverse=True
+    )[:10]
+    
+    # Category distribution
+    category_counts = defaultdict(int)
+    for entry in entries:
+        category = entry.get('category', 'unknown')
+        category_counts[category] += 1
+    
+    # Tag distribution
+    tag_counts = defaultdict(int)
+    for entry in entries:
+        tags = entry.get('tags', [])
+        if tags:
+            for tag in tags:
+                tag_counts[tag] += 1
+    
+    top_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    return {
+        "total_nodes": total_nodes,
+        "total_edges": total_edges,
+        "average_degree": round(avg_degree, 2),
+        "cluster_count": len(clusters),
+        "largest_cluster_size": max([len(c) for c in clusters], default=0),
+        "hub_nodes": [
+            {
+                "id": entry_id,
+                "degree": degree,
+                "title": next((e.get('title', f"Entry {entry_id}") for e in entries if e.get('id') == entry_id), f"Entry {entry_id}")
+            }
+            for entry_id, degree in hub_nodes
+        ],
+        "category_distribution": dict(category_counts),
+        "top_tags": [{"tag": tag, "count": count} for tag, count in top_tags],
+        "graph_density": round(total_edges / (total_nodes * (total_nodes - 1)) if total_nodes > 1 else 0, 4)
+    }
+
+def find_central_nodes(
+    entries: List[Dict[str, Any]],
+    top_k: int = 10
+) -> List[Dict[str, Any]]:
+    """
+    Find central/hub nodes in the knowledge graph
+    
+    Uses degree centrality (nodes with most connections)
+    
+    Returns:
+        List of central nodes with their metrics
+    """
+    graph = build_knowledge_graph(entries)
+    
+    # Calculate degrees
+    node_degrees = []
+    for entry_id, relations in graph.items():
+        entry = next((e for e in entries if e.get('id') == entry_id), None)
+        if entry:
+            node_degrees.append({
+                "id": entry_id,
+                "degree": len(relations),
+                "title": entry.get('title', f"Entry {entry_id}"),
+                "category": entry.get('category', 'unknown'),
+                "connections": [
+                    {
+                        "id": rel['entry'].get('id'),
+                        "title": rel['entry'].get('title', f"Entry {rel['entry'].get('id')}"),
+                        "score": rel.get('score', 0.0)
+                    }
+                    for rel in relations[:5]  # Top 5 connections
+                ]
+            })
+    
+    # Sort by degree and return top K
+    node_degrees.sort(key=lambda x: x['degree'], reverse=True)
+    return node_degrees[:top_k]
+
+def get_subgraph(
+    entries: List[Dict[str, Any]],
+    entry_ids: List[int],
+    depth: int = 1
+) -> Dict[str, Any]:
+    """
+    Get a subgraph around specific entry IDs
+    
+    Includes entries within 'depth' hops from the specified entries
+    
+    Returns:
+        Visualization graph for the subgraph
+    """
+    graph = build_knowledge_graph(entries)
+    
+    # Find all nodes within depth
+    subgraph_nodes = set(entry_ids)
+    current_level = set(entry_ids)
+    
+    for _ in range(depth):
+        next_level = set()
+        for node_id in current_level:
+            if node_id in graph:
+                for relation in graph[node_id]:
+                    related_id = relation['entry'].get('id')
+                    if related_id not in subgraph_nodes:
+                        subgraph_nodes.add(related_id)
+                        next_level.add(related_id)
+        current_level = next_level
+        if not current_level:
+            break
+    
+    # Filter entries to subgraph nodes
+    subgraph_entries = [e for e in entries if e.get('id') in subgraph_nodes]
+    
+    return build_visualization_graph(subgraph_entries, max_nodes=len(subgraph_nodes))

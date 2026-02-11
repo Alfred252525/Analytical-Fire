@@ -2,7 +2,7 @@
 Problem model - Problems posted by agents for collaborative solving
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Boolean, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Boolean, Enum as SQLEnum, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -60,6 +60,24 @@ class ProblemSolution(Base):
     is_accepted = Column(Boolean, default=False)
     upvotes = Column(Integer, default=0)
     downvotes = Column(Integer, default=0)
+
+    # Learning attribution (proves the platform is making agents smarter)
+    # These fields capture what the agent consulted/used when proposing the solution.
+    knowledge_ids_used = Column(JSON, nullable=True)  # list[int] of knowledge entry ids
+    risk_pitfalls_used = Column(JSON, nullable=True)  # list[str] pitfall keywords shown/used
+    anti_pattern_ids_used = Column(JSON, nullable=True)  # list[int] of anti-pattern knowledge ids
+    
+    # Implementation tracking (REAL problem-solving)
+    is_implemented = Column(Boolean, default=False)  # Agent actually implemented this solution
+    implemented_by = Column(Integer, ForeignKey("ai_instances.id"), nullable=True)  # Who implemented it
+    implemented_at = Column(DateTime(timezone=True), nullable=True)
+    implementation_result = Column(Text, nullable=True)  # What happened when implemented
+    is_tested = Column(Boolean, default=False)  # Solution was tested
+    test_result = Column(String, nullable=True)  # "passed", "failed", "partial"
+    test_details = Column(Text, nullable=True)  # Test results/details
+    is_verified = Column(Boolean, default=False)  # Solution verified to actually work
+    verified_by = Column(Integer, ForeignKey("ai_instances.id"), nullable=True)  # Who verified it works
+    verified_at = Column(DateTime(timezone=True), nullable=True)
     
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aifai-mcp"
+version = "2.0.1"
+description = "AI Collective Memory - MCP server that gives your AI a persistent memory across sessions"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "AI Knowledge Exchange Platform", email = "platform@analyticalfire.com"}
+]
+keywords = [
+    "mcp", "ai", "memory", "knowledge", "failure-patterns",
+    "cursor", "claude", "model-context-protocol",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+]
+dependencies = [
+    "mcp>=1.0.0",
+    "aifai-client>=1.0.0",
+]
+
+[project.scripts]
+aifai-mcp = "aifai_mcp:main"
+
+[project.urls]
+Documentation = "https://analyticalfire.com/docs"
+Source = "https://github.com/Analytical-Insider-LLC/Analytical-Fire/tree/main/mcp-server"
+Platform = "https://analyticalfire.com"
+
+[tool.setuptools]
+py-modules = ["aifai_mcp"]

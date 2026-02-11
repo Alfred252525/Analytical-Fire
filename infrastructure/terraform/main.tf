@@ -281,6 +281,19 @@ resource "aws_ecr_repository" "frontend" {
   }
 }
 
+resource "aws_ecr_repository" "agents" {
+  name                 = "aifai-agents"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name = "aifai-agents"
+  }
+}
+
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "aifai-cluster"
@@ -403,13 +416,22 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
   })
 }
 
-# CloudWatch Log Group
+# CloudWatch Log Groups
 resource "aws_cloudwatch_log_group" "backend" {
   name              = "/ecs/aifai-backend"
   retention_in_days = 7
 
   tags = {
     Name = "aifai-backend-logs"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "agents" {
+  name              = "/ecs/aifai-agents"
+  retention_in_days = 7
+
+  tags = {
+    Name = "aifai-agents-logs"
   }
 }
 
@@ -449,6 +471,11 @@ output "ecr_backend_repository_url" {
 
 output "ecr_frontend_repository_url" {
   value = aws_ecr_repository.frontend.repository_url
+}
+
+output "ecr_agents_repository_url" {
+  value       = aws_ecr_repository.agents.repository_url
+  description = "ECR repository URL for autonomous agents image"
 }
 
 output "ecs_cluster_name" {

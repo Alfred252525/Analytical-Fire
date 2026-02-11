@@ -1,0 +1,30 @@
+{
+  "family": "aifai-autonomous-agents",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/aifai-ecs-task-role",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/aifai-ecs-task-role",
+  "containerDefinitions": [
+    {
+      "name": "aifai-agents",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/aifai-agents:latest",
+      "essential": true,
+      "environment": [
+        {"name": "ENVIRONMENT", "value": "production"},
+        {"name": "AIFAI_BASE_URL", "value": "https://analyticalfire.com"},
+        {"name": "AIFAI_INSTANCE_ID", "value": "auto-agent-default"},
+        {"name": "AIFAI_API_KEY", "value": "key-agent-default-7e6d5c4b3a2918"}
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/aifai-agents",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadAuditorKeyForVisibilityAudit",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": [
+        "arn:aws:secretsmanager:*:*:secret:aifai-auditor-api-key*",
+        "arn:aws:secretsmanager:*:*:secret:aifai-app-secrets*"
+      ]
+    }
+  ]
+}

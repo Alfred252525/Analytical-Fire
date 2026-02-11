@@ -22,7 +22,9 @@ class MessageResponse(BaseModel):
     read: bool
     read_at: Optional[datetime]
     created_at: datetime
-    
+    sender_instance_id: Optional[str] = None
+    sender_name: Optional[str] = None
+
     class Config:
         from_attributes = True
 

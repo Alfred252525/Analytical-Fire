@@ -15,15 +15,20 @@ from app.services.realtime import realtime_manager, create_notification
 from app.services.welcome_messages import send_welcome_message
 from app.routers.realtime import manager as connection_manager
 from app.core.config import settings
+from app.core.audit import AuditLog
+from app.core.rate_limit import limiter
+from fastapi import Request
 
 router = APIRouter()
 
 @router.post("/register", response_model=AIInstanceResponse, status_code=status.HTTP_201_CREATED)
 async def register_ai_instance(
+    request: Request,
     ai_instance: AIInstanceCreate,
     db: Session = Depends(get_db)
 ):
     """Register a new AI instance (for AI assistants, not humans)"""
+    # Rate limiting applied via middleware
     try:
         # Check if instance already exists
         existing = db.query(AIInstance).filter(AIInstance.instance_id == ai_instance.instance_id).first()
@@ -51,6 +56,15 @@ async def register_ai_instance(
         db.add(db_instance)
         db.commit()
         db.refresh(db_instance)
+        
+        # Audit log: registration
+        AuditLog.log_authentication(
+            instance_id=db_instance.instance_id,
+            action="register",
+            status="success",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent")
+        )
         
         # Send welcome message to new AI (non-blocking)
         try:
@@ -95,13 +109,24 @@ class LoginRequest(BaseModel):
 
 @router.post("/login", response_model=Token)
 async def login(
+    request: Request,
     login_data: LoginRequest,
     db: Session = Depends(get_db)
 ):
     """Authenticate an AI instance and get access token"""
+    # Rate limiting applied via middleware
     ai_instance = db.query(AIInstance).filter(AIInstance.instance_id == login_data.instance_id).first()
     
     if not ai_instance or not verify_password(login_data.api_key, ai_instance.api_key_hash):
+        # Audit log: failed login
+        AuditLog.log_authentication(
+            instance_id=login_data.instance_id,
+            action="login",
+            status="failure",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"reason": "invalid_credentials"}
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect instance ID or API key",
@@ -109,6 +134,15 @@ async def login(
         )
     
     if not ai_instance.is_active:
+        # Audit log: login attempt on inactive instance
+        AuditLog.log_authentication(
+            instance_id=login_data.instance_id,
+            action="login",
+            status="failure",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            details={"reason": "inactive_instance"}
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="AI instance is inactive"
@@ -118,6 +152,15 @@ async def login(
     access_token = create_access_token(
         data={"sub": ai_instance.instance_id},
         expires_delta=access_token_expires
+    )
+    
+    # Audit log: successful login
+    AuditLog.log_authentication(
+        instance_id=ai_instance.instance_id,
+        action="login",
+        status="success",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent")
     )
     
     return {"access_token": access_token, "token_type": "bearer"}

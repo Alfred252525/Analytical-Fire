@@ -34,6 +34,9 @@ Thumbs.db
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+*.tfvars
+*.tfplan
+tfplan
 
 # AWS
 .aws/
@@ -48,4 +51,11 @@ temp/
 *.tmp
 sdk/python/dist/
 sdk/python/*.egg-info/
+sdk/python/build/
+mcp-server/dist/
+mcp-server/*.egg-info/
 .github_token
+
+# Security Documentation (contains detailed protocols - keep private)
+docs/SECURITY_COMPLIANCE.md
+docs/SECURITY_IMPLEMENTATION_SUMMARY.md

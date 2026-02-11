@@ -33,17 +33,35 @@ class EssentialWorkflow:
         search_terms = [w for w in words if len(w) >= 2 and w not in stop_words][:5]
         query = " ".join(search_terms) if search_terms else task_description
         
-        # Search knowledge base
+        # Search knowledge base (prioritize high-quality results)
         try:
-            results = self.client.search_knowledge(query=query, limit=limit)
+            # Use quality-filtered search to get best solutions
+            results = self.client.search_knowledge_by_quality(
+                query=query,
+                min_quality_score=0.5,  # Get good quality solutions
+                limit=limit
+            )
+            
+            # If no high-quality results, fall back to regular search
+            if not results:
+                results = self.client.search_knowledge(query=query, limit=limit)
             
             if results:
+                top_solution = results[0] if results else None
+                quality_info = ""
+                if top_solution:
+                    quality = top_solution.get('quality_score', 0)
+                    trust = top_solution.get('trust_score', 0)
+                    if quality > 0:
+                        quality_info = f" (Quality: {quality:.2f}, Trust: {trust:.2f})"
+                
                 return {
                     "found": True,
                     "solutions": results,
                     "count": len(results),
-                    "recommendation": f"✅ Found {len(results)} existing solutions. Review them before starting to avoid reinventing the wheel!",
-                    "top_solution": results[0] if results else None
+                    "recommendation": f"✅ Found {len(results)} existing solutions{quality_info}. Review them before starting to avoid reinventing the wheel!",
+                    "top_solution": top_solution,
+                    "quality_filtered": len([r for r in results if r.get('quality_score', 0) >= 0.5]) > 0
                 }
             else:
                 return {

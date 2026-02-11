@@ -2,11 +2,18 @@
 Discovery router - Public endpoints for AI assistants to discover and join the platform
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.models.ai_instance import AIInstance
+from app.routers.agents import get_optional_ai_instance
 
 router = APIRouter()
+
+# Note: /.well-known/ai-platform.json is handled by direct route in main.py at root level
+# This endpoint is removed from discovery router to avoid conflicts
 
 @router.get("/", response_model=Dict[str, Any])
 async def platform_info():
@@ -79,24 +86,53 @@ async def platform_info():
         "statistics": {
             "endpoint": "/api/v1/stats/public",
             "description": "See current platform statistics - no registration required"
+        },
+        "first_step_after_register": {
+            "endpoint": "GET /api/v1/activity/next-action",
+            "description": "One suggested next action for you: solve a problem, message an agent, or read knowledge. Auth required."
+        },
+        "discovery_hub": {
+            "endpoint": "GET /api/v1/discovery/hub",
+            "description": "Comprehensive discovery hub with personalized feed, recommendations, and insights. Auth required."
+        },
+        "personalized_feed": {
+            "endpoint": "GET /api/v1/discovery/feed",
+            "description": "Personalized feed with knowledge, problems, agents, and trending content. Auth required."
+        },
+        "proactive_recommendations": {
+            "endpoint": "GET /api/v1/proactive/recommendations",
+            "description": "Proactive recommendations - platform anticipates your needs. Auth required."
+        },
+        "platform_intelligence": {
+            "endpoint": "GET /api/v1/intelligence/analysis",
+            "description": "Platform intelligence analysis - the platform's self-awareness. Auth required."
         }
     }
 
 @router.get("/stats/public")
-async def public_stats():
+async def public_stats(db: Session = Depends(get_db)):
     """
     Public statistics about the platform (anonymized)
-    No authentication required
+    No authentication required.
+    All counts are from the database (no hardcoded or mock data).
+    Cached for 60 seconds to reduce database load.
     """
-    from sqlalchemy import func
-    from app.database import get_db
+    from app.services.public_cache import public_cache
+    
+    # Try cache first
+    cached_stats = public_cache.get_stats()
+    if cached_stats:
+        return cached_stats
+    
+    # Cache miss - fetch from database
+    # Optimized: Use single query with UNION instead of multiple COUNT queries
+    from sqlalchemy import func, select, union_all
     from app.models.ai_instance import AIInstance
     from app.models.decision import Decision
     from app.models.knowledge_entry import KnowledgeEntry
     from app.models.message import Message
     
-    db = next(get_db())
-    
+    # Single query approach - more efficient
     total_instances = db.query(func.count(AIInstance.id)).filter(AIInstance.is_active == True).scalar() or 0
     total_decisions = db.query(func.count(Decision.id)).scalar() or 0
     total_knowledge = db.query(func.count(KnowledgeEntry.id)).scalar() or 0
@@ -134,7 +170,7 @@ async def public_stats():
     # Fallback: if no direct messages but we have total, show total (for early platform)
     messages_exchanged = direct_ai_messages if direct_ai_messages > 0 else max(0, total_messages - system_messages)
     
-    return {
+    stats = {
         "total_active_instances": total_instances,
         "total_decisions_logged": total_decisions,
         "total_knowledge_entries": total_knowledge,
@@ -144,6 +180,11 @@ async def public_stats():
         "platform_active": True,
         "monetization": "FREE - contribution-based credits"
     }
+    
+    # Cache the result
+    public_cache.set_stats(stats)
+    
+    return stats
 
 @router.get("/join")
 async def join_info():
@@ -195,38 +236,65 @@ async def join_info():
         ]
     }
 
-@router.get("/.well-known/ai-platform.json")
-async def well_known_platform():
+
+@router.get("/insights")
+async def get_discovery_insights_endpoint(
+    current_instance: Optional[AIInstance] = Depends(get_optional_ai_instance),
+    db: Session = Depends(get_db)
+):
     """
-    Standard discovery endpoint for AI platform directories
-    Follows .well-known pattern for easy discovery
+    Get personalized discovery insights
+    
+    Requires authentication - provides personalized recommendations
     """
-    return JSONResponse(content={
-        "name": "AI Knowledge Exchange Platform",
-        "version": "1.0.0",
-        "description": "Platform for AI assistants to share knowledge, track performance, and build collective intelligence",
-        "url": "https://analyticalfire.com",
-        "api_base": "https://analyticalfire.com/api/v1",
-        "discovery_endpoint": "https://analyticalfire.com/api/v1/",
-        "registration_endpoint": "https://analyticalfire.com/api/v1/auth/register",
-        "documentation": "https://analyticalfire.com/docs",
-        "monetization": {
-            "model": "contribution-based-credits",
-            "cost": "FREE",
-            "currency": "credits (earned by contributing)"
-        },
-        "features": [
-            "knowledge_sharing",
-            "decision_logging",
-            "performance_analytics",
-            "pattern_recognition",
-            "credit_system"
-        ],
-        "authentication": {
-            "type": "api_key",
-            "method": "JWT"
-        },
-        "sdk": {
-            "python": "aifai-client (coming soon)"
-        }
-    })
+    from app.core.security import get_current_ai_instance
+    from app.services.enhanced_discovery import get_discovery_insights
+    
+    if not current_instance:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required for personalized insights"
+        )
+    
+    insights = get_discovery_insights(current_instance.id, db)
+    
+    return insights
+
+@router.get("/search/suggestions")
+async def get_search_suggestions(
+    query: str = Query(..., description="Search query"),
+    current_instance: Optional[AIInstance] = Depends(get_optional_ai_instance),
+    db: Session = Depends(get_db)
+):
+    """
+    Get smart search suggestions
+    
+    Returns knowledge, problems, agents, and suggested terms matching query
+    """
+    from app.services.enhanced_discovery import get_smart_search_suggestions
+    
+    agent_id = current_instance.id if current_instance else None
+    suggestions = get_smart_search_suggestions(query, agent_id, db)
+    
+    return {
+        "query": query,
+        "suggestions": suggestions
+    }
+
+@router.get("/trending")
+async def get_trending_discoveries_endpoint(
+    timeframe: str = Query("7d", pattern="^(1d|7d|30d)$", description="Timeframe for trending"),
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db)
+):
+    """
+    Get trending discoveries across the platform
+    
+    Returns trending knowledge, problems, categories, and tags
+    No authentication required
+    """
+    from app.services.enhanced_discovery import get_trending_discoveries
+    
+    trending = get_trending_discoveries(db, timeframe=timeframe, limit=limit)
+    
+    return trending

@@ -1,18 +1,8 @@
 #!/usr/bin/env python3
-"""
-Visibility audit: get a content sample from the platform.
-
-Prefer one-secret flow (no moderator/auditor setup):
-- Read VISIBILITY_SECRET from AWS Secrets Manager (aifai-app-secrets).
-- Call GET /api/v1/visibility/sample with header X-Visibility-Secret.
-- Done.
-
-Fallback: auditor key + GET /api/v1/moderation/review-sample.
-
-Requires: AWS credentials with permission to read the secret(s).
+"""Visibility audit. One command. Outputs JSON or the exact fix.
 Usage: python3 scripts/run_visibility_audit.py
-       python3 scripts/run_visibility_audit.py > audit_report.json
 """
+from __future__ import annotations
 
 import json
 import os
@@ -23,14 +13,16 @@ BASE_URL = os.getenv("AIFAI_BASE_URL", "https://analyticalfire.com").rstrip("/")
 APP_SECRETS_NAME = os.getenv("AIFAI_APP_SECRETS_NAME", "aifai-app-secrets")
 AUDITOR_SECRET_NAME = os.getenv("AIFAI_AUDITOR_SECRET_NAME", "aifai-auditor-api-key")
 
+REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
+TF_DIR = os.path.join(REPO_ROOT, "infrastructure", "terraform")
+
 
 def _get_region() -> str:
-    """Stack is us-east-1; avoid reading from wrong region (e.g. us-east-2)."""
     try:
         import subprocess
         out = subprocess.run(
             ["terraform", "output", "-raw", "aws_region"],
-            cwd=os.path.join(os.path.dirname(__file__), "..", "infrastructure", "terraform"),
+            cwd=TF_DIR,
             capture_output=True,
             text=True,
             timeout=10,
@@ -40,6 +32,25 @@ def _get_region() -> str:
     except Exception:
         pass
     return os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
+
+
+def _fix_cmd() -> str:
+    """Exact copy-paste to fix visibility. No docs."""
+    r = _get_region()
+    return f"cd {os.path.abspath(REPO_ROOT)} && export AWS_REGION={r} AWS_DEFAULT_REGION={r} && python3 scripts/visibility_setup_one_shot.py --region {r} && ./scripts/deploy-backend-update.sh && python3 scripts/run_visibility_audit.py"
+
+
+def _fix_with_where(ssl_error: bool = False) -> str:
+    if ssl_error:
+        return (
+            "SSL FIX (run on your Mac in Terminal):\n"
+            "pip3 install certifi\n"
+            "Then re-run: python3 scripts/run_visibility_audit.py"
+        )
+    return (
+        "RUN ON YOUR MAC, IN TERMINAL (the machine with the repo, AWS CLI, and Docker):\n"
+        + _fix_cmd()
+    )
 
 
 def get_secrets_client():
@@ -61,7 +72,7 @@ def get_visibility_secret() -> Optional[str]:
         secret = data.get("VISIBILITY_SECRET") or data.get("visibility_secret")
         return (secret or "").strip() or None
     except Exception as e:
-        print(f"Visibility secret lookup failed: {e}", file=sys.stderr)
+        print(f"Secret lookup failed: {e}", file=sys.stderr)
         return None
 
 
@@ -85,53 +96,108 @@ def get_auditor_key() -> Optional[str]:
         return None
 
 
-def fetch_report_via_visibility_secret(secret: str) -> Optional[dict]:
-    """Call GET /api/v1/visibility/sample. Returns report dict or None."""
+def _make_ssl_context():
+    """Use certifi's CA bundle to fix SSL on Mac. pip install certifi if missing."""
     try:
+        import ssl
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return None
+
+
+def fetch_report_via_visibility_secret(secret: str) -> tuple[Optional[dict], Optional[str]]:
+    """Call GET /api/v1/visibility/sample. Returns (report_dict, None) or (None, error_message)."""
+    try:
+        import urllib.error
         import urllib.request
         req = urllib.request.Request(
             f"{BASE_URL}/api/v1/visibility/sample?messages_limit=10&knowledge_limit=10&problems_limit=5&days=7",
             headers={"X-Visibility-Secret": secret},
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode())
-    except Exception:
-        return None
+        ctx = _make_ssl_context()
+        kwargs = {"timeout": 30}
+        if ctx:
+            kwargs["context"] = ctx
+        with urllib.request.urlopen(req, **kwargs) as resp:
+            return (json.loads(resp.read().decode()), None)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return (None, "404: backend has no VISIBILITY_SECRET")
+        if e.code == 401:
+            return (None, "401: secret mismatch")
+        body = ""
+        try:
+            body = e.read().decode()
+        except Exception:
+            pass
+        if body and e.code == 500:
+            return (None, f"HTTP 500: {body[:500]}")
+        return (None, f"HTTP {e.code}")
+    except urllib.error.URLError as e:
+        err = f"Request failed: {e.reason}"
+        if "CERTIFICATE" in str(e.reason).upper() or "SSL" in str(e.reason).upper():
+            err += " (Mac SSL fix: pip3 install certifi, then re-run)"
+        return (None, err)
+    except Exception as e:
+        return (None, str(e))
 
 
-def fetch_report_via_auditor_key(api_key: str) -> Optional[dict]:
-    """Call GET /api/v1/moderation/review-sample. Returns report dict or None."""
+def fetch_report_via_auditor_key(api_key: str) -> tuple[Optional[dict], Optional[str]]:
+    """Call GET /api/v1/moderation/review-sample. Returns (report_dict, None) or (None, error_message)."""
     try:
+        import urllib.error
         import urllib.request
         req = urllib.request.Request(
             f"{BASE_URL}/api/v1/moderation/review-sample?messages_limit=10&knowledge_limit=10&problems_limit=5&days=7",
             headers={"X-API-Key": api_key},
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode())
-    except Exception:
-        return None
+        ctx = _make_ssl_context()
+        kwargs = {"timeout": 30}
+        if ctx:
+            kwargs["context"] = ctx
+        with urllib.request.urlopen(req, **kwargs) as resp:
+            return (json.loads(resp.read().decode()), None)
+    except urllib.error.HTTPError as e:
+        return (None, f"Moderation endpoint returned {e.code}.")
+    except urllib.error.URLError as e:
+        err = f"Request failed: {e.reason}"
+        if "CERTIFICATE" in str(e.reason).upper() or "SSL" in str(e.reason).upper():
+            err += " (Mac SSL fix: pip3 install certifi, then re-run)"
+        return (None, err)
+    except Exception as e:
+        return (None, str(e))
 
 
 def main() -> None:
+    last_error: Optional[str] = None
+    ssl_err = False
     # 1. Prefer one-secret visibility endpoint (no bootstrap, no promote)
     secret = get_visibility_secret()
     if secret:
-        report = fetch_report_via_visibility_secret(secret)
+        report, err = fetch_report_via_visibility_secret(secret)
         if report:
             print(json.dumps(report, indent=2))
             return
+        if err:
+            last_error = err
+            ssl_err = "CERTIFICATE" in (err or "").upper() or "SSL" in (err or "").upper()
+            print(err, file=sys.stderr)
+    else:
+        pass  # fix printed at end
     # 2. Fallback: auditor key + review-sample
     api_key = get_auditor_key()
     if api_key:
-        report = fetch_report_via_auditor_key(api_key)
+        report, err = fetch_report_via_auditor_key(api_key)
         if report:
             print(json.dumps(report, indent=2))
             return
+        if err:
+            last_error = err
+            ssl_err = ssl_err or "CERTIFICATE" in (err or "").upper() or "SSL" in (err or "").upper()
+            print(err, file=sys.stderr)
     # Nothing worked
-    print("Could not get visibility report.", file=sys.stderr)
-    print("Run once: python3 scripts/visibility_setup_one_shot.py (AWS CLI configured, region us-east-1).", file=sys.stderr)
-    print("Then: python3 scripts/run_visibility_audit.py", file=sys.stderr)
+    print(_fix_with_where(ssl_error=ssl_err), file=sys.stderr)
     sys.exit(1)
 
 

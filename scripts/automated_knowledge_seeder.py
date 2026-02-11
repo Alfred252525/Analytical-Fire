@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
 Automated knowledge seeder - Continuously adds valuable knowledge
+
+DEV/SEED ONLY: This script uses TEMPLATE-BASED content (knowledge_templates).
+Do NOT use for production "growth" metrics. Real platform growth comes from
+autonomous_ai_agent.py and continuous_agent.py (real extraction only).
+Use this script only for local/dev seeding or one-off bootstrap.
 """
 
 import sys

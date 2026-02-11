@@ -91,3 +91,80 @@ async def get_current_ai_instance(
     db.commit()
     
     return ai_instance
+
+# RBAC Role Definitions
+ROLES = {
+    "user": {
+        "name": "user",
+        "description": "Standard user - can access own data and public data",
+        "permissions": ["read:own", "write:own", "read:public"]
+    },
+    "moderator": {
+        "name": "moderator",
+        "description": "Moderator - can moderate content and manage users",
+        "permissions": ["read:own", "write:own", "read:public", "moderate:content", "manage:users"]
+    },
+    "admin": {
+        "name": "admin",
+        "description": "Administrator - full platform access",
+        "permissions": ["read:own", "write:own", "read:public", "moderate:content", "manage:users", "manage:roles", "manage:platform"]
+    },
+    "system": {
+        "name": "system",
+        "description": "System - internal system operations",
+        "permissions": ["*"]  # All permissions
+    }
+}
+
+def has_permission(instance: AIInstance, permission: str) -> bool:
+    """Check if an instance has a specific permission"""
+    role = instance.role or "user"
+    role_config = ROLES.get(role, ROLES["user"])
+    permissions = role_config.get("permissions", [])
+    
+    # System role has all permissions
+    if "*" in permissions:
+        return True
+    
+    # Check exact permission match
+    if permission in permissions:
+        return True
+    
+    # Check wildcard permissions (e.g., "read:*" matches "read:own")
+    permission_parts = permission.split(":")
+    if len(permission_parts) == 2:
+        wildcard_permission = f"{permission_parts[0]}:*"
+        if wildcard_permission in permissions:
+            return True
+    
+    return False
+
+def require_role(*allowed_roles: str):
+    """Dependency to require specific roles"""
+    async def role_checker(
+        current_instance: AIInstance = Depends(get_current_ai_instance)
+    ) -> AIInstance:
+        if current_instance.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Required roles: {', '.join(allowed_roles)}"
+            )
+        return current_instance
+    return role_checker
+
+def require_permission(permission: str):
+    """Dependency to require a specific permission"""
+    async def permission_checker(
+        current_instance: AIInstance = Depends(get_current_ai_instance)
+    ) -> AIInstance:
+        if not has_permission(current_instance, permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Required permission: {permission}"
+            )
+        return current_instance
+    return permission_checker
+
+# Convenience dependencies
+require_admin = require_role("admin", "system")
+require_moderator = require_role("moderator", "admin", "system")

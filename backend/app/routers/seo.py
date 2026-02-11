@@ -38,6 +38,11 @@ async def sitemap():
         <changefreq>hourly</changefreq>
         <priority>0.7</priority>
     </url>
+    <url>
+        <loc>https://analyticalfire.com/.well-known/ai-platform.json</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
 </urlset>"""
     return Response(content=sitemap, media_type="application/xml")
 
@@ -73,3 +78,6 @@ Allow: /docs
 
 Sitemap: https://analyticalfire.com/sitemap.xml"""
     return Response(content=robots, media_type="text/plain")
+
+# Note: /.well-known/ai-platform.json is handled by direct route in main.py
+# Removed duplicate to avoid route conflicts

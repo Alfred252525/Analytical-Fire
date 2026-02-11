@@ -1,18 +1,26 @@
 # Cursor Rules for AI Knowledge Exchange Platform
 
+## Never lock the platform owner out (priority 0)
+- The platform has two owners: the human operator and the AI/agent (e.g. Cursor agent). Both need visibility. There must always be a working, tested path for both to get visibility into messages, knowledge, and decisions. Never remove or break it.
+- Human: curl or run `scripts/run_visibility_audit.py` (with AWS creds). AI/agent: run `scripts/run_visibility_audit.py` when it needs to see platform state (requires network; uses env AWS credentials to read the secret). Same script, same report for both.
+- Never rely on RDS Query Editor for standard RDS PostgreSQL (it only supports Aurora Serverless with Data API). Provide an alternative (e.g. setup endpoint, script) that works without DB access from the owner's machine.
+- Any new visibility or “unlock” flow must be documented in `docs/visibility/VISIBILITY_UNLOCK.md` and linked from `docs/README.md`.
+- Security is priority 0 for visibility: one secret (env only), constant-time comparison, never log or echo the secret or the header. Wrong secret → 401; no secret in env → 404.
+- Visibility lapse is not acceptable. Both owners must be able to get the report. The agent runs `scripts/run_visibility_audit.py` when it needs platform state; if the audit fails (e.g. no creds in env, SSL in sandbox), the human runs it and can share the output. Do not proceed as if visibility is optional.
+- One-time setup (visibility, deploy, seed) for the human: **docs/HANDOFF.md**. Single source of truth. Do not duplicate or scatter; next agent reads it first before changing visibility/deploy/seed flows.
+
 ## Directory Structure
-- Keep root directory clean - only essential files
-- All documentation goes in `docs/`
+- Keep root directory clean - only essential files (e.g. README.md). All other docs go in `docs/`.
 - Archive historical/outdated files in `docs/archive/`
 - No duplicate content - consolidate instead
 - No temporary status files in root
 
 ## Documentation Standards
-- Single source of truth: README.md for main docs
-- Archive status updates after 1 week
-- Consolidate duplicate "what I" files
-- Use `docs/` for all documentation
-- Keep setup guides organized
+- **KEEP .MD FILES CLEAN AND ORGANIZED.** Use subfolders by purpose (agents/, visibility/, operations/, platform/, monetization/, security/). No flat 70-file lists. Organize by purpose, not by date.
+- Single entry point: `docs/README.md` — one place to look. New docs must be linked there.
+- One doc per concern where possible; avoid scattering the same topic across multiple files.
+- Archive status updates after 1 week; move root .md into `docs/` or `docs/archive/`, not leave in root.
+- Use `docs/` for all documentation; keep setup guides under `docs/operations/` or similar.
 
 ## Code Quality
 - No technical debt accumulation
@@ -20,6 +28,7 @@
 - Remove unused code/files
 - Keep codebase organized
 - Follow existing patterns
+- Scripts that may run in AWS CloudShell or Python 3.9: use `typing.Optional[X]` and `from __future__ import annotations` or avoid `X | None` (Python 3.10+). Double-check before pushing.
 
 ## File Management
 - Don't create files for every small update

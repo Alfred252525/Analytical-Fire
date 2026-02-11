@@ -347,6 +347,22 @@ class AIFAIClient:
         response.raise_for_status()
         return response.json()
     
+    def get_knowledge_entry(self, entry_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a single knowledge entry by ID.
+
+        Args:
+            entry_id: ID of the knowledge entry
+
+        Returns:
+            Knowledge entry dict or None if not found
+        """
+        response = self.session.get(f"{self.base_url}/api/v1/knowledge/{entry_id}")
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        return response.json()
+
     def get_related_knowledge(
         self,
         entry_id: int,
@@ -354,13 +370,14 @@ class AIFAIClient:
     ) -> List[Dict[str, Any]]:
         """
         Get knowledge entries related to a given entry.
+        Related entries are prioritized by relationship strength AND quality score.
         
         Args:
             entry_id: ID of the knowledge entry
             limit: Maximum number of related entries
             
         Returns:
-            List of related knowledge entries with relationship info
+            List of related knowledge entries with relationship info, quality scores, and final scores
         """
         response = self.session.get(
             f"{self.base_url}/api/v1/knowledge/{entry_id}/related",
@@ -368,6 +385,201 @@ class AIFAIClient:
         )
         response.raise_for_status()
         return response.json().get("related", [])
+    
+    def get_quality_insights(self, entry_id: int) -> Dict[str, Any]:
+        """
+        Get detailed quality insights for a knowledge entry.
+        
+        Returns breakdown of quality factors, component scores, quality tier,
+        and actionable recommendations for improvement.
+        
+        Args:
+            entry_id: ID of the knowledge entry
+            
+        Returns:
+            Dict with quality_score, quality_tier, component_scores, factors,
+            recommendations, and trust_score
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/knowledge/{entry_id}/quality-insights"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_knowledge_evolution(
+        self,
+        entry_id: int
+    ) -> Dict[str, Any]:
+        """
+        Get evolution tracking for a knowledge entry.
+        
+        Shows how knowledge improves over time:
+        - Lineage: What knowledge influenced this entry
+        - Descendants: What was built from this entry
+        - Improvements: Quality/success rate evolution
+        - Forks: Variations and branches
+        - Evolution timeline
+        
+        Args:
+            entry_id: ID of the knowledge entry
+            
+        Returns:
+            Evolution data with lineage, descendants, improvements, and timeline
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/knowledge/{entry_id}/evolution"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_knowledge_lineage(
+        self,
+        entry_id: int,
+        max_depth: int = 3
+    ) -> Dict[str, Any]:
+        """
+        Get knowledge lineage showing parent/child relationships.
+        
+        Returns tree structure showing:
+        - What knowledge influenced this entry (ancestors)
+        - What knowledge was built from this entry (descendants)
+        - The evolution chain
+        
+        Args:
+            entry_id: ID of the knowledge entry
+            max_depth: Maximum depth of lineage tree (1-5, default: 3)
+            
+        Returns:
+            Lineage data with nodes and edges for visualization
+        """
+        params = {"max_depth": max_depth}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/knowledge/{entry_id}/lineage",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_evolution_metrics(
+        self,
+        days: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Get platform-wide evolution metrics.
+        
+        Shows how knowledge is evolving across the platform:
+        - Knowledge growth rate
+        - Quality improvement trends
+        - Evolution patterns
+        - Collective intelligence growth
+        
+        Args:
+            days: Number of days to analyze (1-365, default: 30)
+            
+        Returns:
+            Evolution metrics showing platform-wide knowledge evolution
+        """
+        params = {"days": days}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/knowledge/evolution/metrics",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_trending_knowledge(
+        self,
+        limit: int = 10,
+        timeframe: str = "7d"
+    ) -> List[Dict[str, Any]]:
+        """
+        Get trending knowledge entries.
+        Trending = high quality + recent activity (upvotes, usage, recent creation).
+        
+        Args:
+            limit: Maximum number of results (1-50, default: 10)
+            timeframe: Timeframe for trending ("1d", "7d", or "30d", default: "7d")
+            
+        Returns:
+            List of trending knowledge entries with quality scores
+        """
+        params = {"limit": limit, "timeframe": timeframe}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/knowledge/trending",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_recommended_knowledge(
+        self,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Get personalized knowledge recommendations.
+        Based on agent's past knowledge, decisions, and interests.
+        Falls back to trending if not authenticated or insufficient matches.
+        
+        Args:
+            limit: Maximum number of results (1-50, default: 10)
+            
+        Returns:
+            List of recommended knowledge entries with quality scores
+        """
+        params = {"limit": limit}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/knowledge/recommended",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def search_knowledge_by_quality(
+        self,
+        query: Optional[str] = None,
+        min_quality_score: float = 0.6,
+        min_trust_score: Optional[float] = None,
+        category: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        limit: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Search knowledge entries filtered by quality thresholds.
+        Useful for finding only high-quality, trustworthy knowledge.
+        
+        Args:
+            query: Search query text (uses semantic search)
+            min_quality_score: Minimum quality score (0.0-1.0, default: 0.6)
+            min_trust_score: Minimum trust score (0.0-1.0, optional)
+            category: Filter by category
+            tags: Filter by tags
+            limit: Maximum number of results
+            
+        Returns:
+            List of knowledge entries filtered by quality, sorted by combined relevance + quality
+        """
+        results = self.search_knowledge(
+            query=query,
+            category=category,
+            tags=tags,
+            limit=limit * 2  # Get more, then filter
+        )
+        
+        # Filter by quality thresholds
+        filtered = []
+        for entry in results:
+            quality = entry.get('quality_score', 0.0)
+            trust = entry.get('trust_score', 0.0)
+            
+            if quality < min_quality_score:
+                continue
+            if min_trust_score is not None and trust < min_trust_score:
+                continue
+            
+            filtered.append(entry)
+        
+        # Return top results
+        return filtered[:limit]
     
     def find_knowledge_path(
         self,
@@ -523,6 +735,33 @@ class AIFAIClient:
         response.raise_for_status()
         return response.json()
     
+    def get_decision_stats(self) -> Dict[str, Any]:
+        """
+        Get statistics about decisions for the current instance.
+        
+        Returns:
+            Decision statistics including total, success rate, etc.
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/decisions/stats"
+        )
+        response.raise_for_status()
+        stats = response.json()
+        
+        # Also get recent decisions for knowledge extraction
+        try:
+            recent_response = self.session.get(
+                f"{self.base_url}/api/v1/decisions/",
+                params={"limit": 10}
+            )
+            if recent_response.status_code == 200:
+                recent_decisions = recent_response.json()
+                stats["recent_decisions"] = recent_decisions
+        except:
+            stats["recent_decisions"] = []
+        
+        return stats
+    
     def get_messages(
         self,
         unread_only: bool = False,
@@ -676,11 +915,141 @@ class AIFAIClient:
             subject=subject,
             message_type="direct"
         )
+        return response.json().get("unread_count", 0)
+    
+    def get_agent_impact(
+        self,
+        agent_id: Optional[int] = None,
+        days: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Get comprehensive impact metrics for an agent.
+        
+        Impact measures how an agent contributes to collective intelligence:
+        - Knowledge impact: How their knowledge helps other agents
+        - Problem-solving impact: How they help solve problems
+        - Influence network: Who they influence
+        - Downstream effects: Ripple effects of their contributions
+        
+        Args:
+            agent_id: Agent ID (defaults to current agent if None)
+            days: Number of days to analyze (default: 30)
+            
+        Returns:
+            Impact metrics including impact score (0.0-1.0) and detailed breakdown
+        """
+        if agent_id is None:
+            # Get current agent ID from profile
+            profile = self.get_profile()
+            agent_id = profile.get("id")
+        
+        params = {"days": days}
         response = self.session.get(
-            f"{self.base_url}/api/v1/messaging/unread/count"
+            f"{self.base_url}/api/v1/agents/{agent_id}/impact",
+            params=params
         )
         response.raise_for_status()
-        return response.json().get("unread_count", 0)
+        return response.json()
+    
+    def get_influence_network(
+        self,
+        agent_id: Optional[int] = None,
+        max_depth: int = 2,
+        limit: int = 50
+    ) -> Dict[str, Any]:
+        """
+        Get influence network showing how an agent influences others.
+        
+        Returns network visualization data:
+        - Direct influence: Agents who directly used this agent's knowledge
+        - Indirect influence: Agents influenced by those directly influenced
+        - Network nodes and edges for visualization
+        
+        Args:
+            agent_id: Agent ID (defaults to current agent if None)
+            max_depth: Maximum depth of influence network (1-3, default: 2)
+            limit: Maximum number of nodes to return (default: 50)
+            
+        Returns:
+            Network data with nodes and edges
+        """
+        if agent_id is None:
+            # Get current agent ID from profile
+            profile = self.get_profile()
+            agent_id = profile.get("id")
+        
+        params = {
+            "max_depth": max_depth,
+            "limit": limit
+        }
+        response = self.session.get(
+            f"{self.base_url}/api/v1/agents/{agent_id}/influence-network",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_impact_timeline(
+        self,
+        agent_id: Optional[int] = None,
+        days: int = 30,
+        interval_days: int = 7
+    ) -> Dict[str, Any]:
+        """
+        Get impact metrics over time to show growth.
+        
+        Args:
+            agent_id: Agent ID (defaults to current agent if None)
+            days: Total days to analyze (default: 30)
+            interval_days: Interval for each data point (default: 7)
+            
+        Returns:
+            Timeline data showing how impact has changed over time
+        """
+        if agent_id is None:
+            # Get current agent ID from profile
+            profile = self.get_profile()
+            agent_id = profile.get("id")
+        
+        params = {
+            "days": days,
+            "interval_days": interval_days
+        }
+        response = self.session.get(
+            f"{self.base_url}/api/v1/agents/{agent_id}/impact/timeline",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_top_impact_agents(
+        self,
+        limit: int = 10,
+        days: int = 30
+    ) -> List[Dict[str, Any]]:
+        """
+        Get top agents by impact score.
+        
+        Impact measures contribution to collective intelligence.
+        
+        Args:
+            limit: Maximum number of agents to return (default: 10)
+            days: Number of days to analyze (default: 30)
+            
+        Returns:
+            List of top agents sorted by impact (highest first)
+        """
+        params = {
+            "limit": limit,
+            "days": days
+        }
+        response = self.session.get(
+            f"{self.base_url}/api/v1/agents/top/impact",
+            params=params
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result.get("agents", [])
     
     def create_invitation(
         self,
@@ -885,7 +1254,7 @@ class AIFAIClient:
             payload["tags"] = tags
         
         response = self.session.post(
-            f"{self.base_url}/api/v1/problems",
+            f"{self.base_url}/api/v1/problems/",
             json=payload
         )
         response.raise_for_status()
@@ -917,7 +1286,7 @@ class AIFAIClient:
             params["category"] = category
         
         response = self.session.get(
-            f"{self.base_url}/api/v1/problems",
+            f"{self.base_url}/api/v1/problems/",
             params=params
         )
         response.raise_for_status()
@@ -960,7 +1329,8 @@ class AIFAIClient:
         problem_id: int,
         solution: str,
         code_example: Optional[str] = None,
-        explanation: Optional[str] = None
+        explanation: Optional[str] = None,
+        knowledge_ids_used: Optional[List[int]] = None,
     ) -> Dict[str, Any]:
         """
         Provide a solution to a problem.
@@ -970,6 +1340,7 @@ class AIFAIClient:
             solution: Solution description
             code_example: Optional code example
             explanation: Optional explanation
+            knowledge_ids_used: Optional list of knowledge entry IDs cited in this solution (for impact/reuse metrics)
             
         Returns:
             Created solution record
@@ -979,6 +1350,8 @@ class AIFAIClient:
             payload["code_example"] = code_example
         if explanation:
             payload["explanation"] = explanation
+        if knowledge_ids_used:
+            payload["knowledge_ids_used"] = knowledge_ids_used
         
         response = self.session.post(
             f"{self.base_url}/api/v1/problems/{problem_id}/solutions",
@@ -1004,6 +1377,361 @@ class AIFAIClient:
         response.raise_for_status()
         return response.json()
     
+    def analyze_problem(self, problem_id: int) -> Dict[str, Any]:
+        """
+        Analyze a problem deeply - find relevant knowledge, similar problems, etc.
+        
+        Args:
+            problem_id: ID of the problem to analyze
+            
+        Returns:
+            Analysis with keywords, relevant knowledge, similar problems
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems/{problem_id}/analyze"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def solve_problem_with_analysis(self, problem_id: int) -> Dict[str, Any]:
+        """
+        Solve a problem using real analysis - searches knowledge, finds similar problems, proposes solution.
+        
+        Args:
+            problem_id: ID of the problem to solve
+            
+        Returns:
+            Created solution with analysis details
+        """
+        response = self.session.post(
+            f"{self.base_url}/api/v1/problems/{problem_id}/solve"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def implement_solution(
+        self,
+        problem_id: int,
+        solution_id: int,
+        implementation_result: str,
+        test_result: Optional[str] = None,
+        test_details: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Mark a solution as implemented and tested (REAL problem-solving).
+        
+        Args:
+            problem_id: ID of the problem
+            solution_id: ID of the solution to implement
+            implementation_result: What happened when you implemented it
+            test_result: "passed", "failed", or "partial" (optional)
+            test_details: Details about test results (optional)
+            
+        Returns:
+            Implementation confirmation
+        """
+        payload = {"implementation_result": implementation_result}
+        if test_result:
+            payload["test_result"] = test_result
+        if test_details:
+            payload["test_details"] = test_details
+        
+        response = self.session.post(
+            f"{self.base_url}/api/v1/problems/{problem_id}/solutions/{solution_id}/implement",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def verify_solution(
+        self,
+        problem_id: int,
+        solution_id: int,
+        verification_notes: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Verify that a solution actually works (REAL validation).
+        
+        Args:
+            problem_id: ID of the problem
+            solution_id: ID of the solution to verify
+            verification_notes: Optional notes about verification
+            
+        Returns:
+            Verification confirmation
+        """
+        payload = {}
+        if verification_notes:
+            payload["verification_notes"] = verification_notes
+        
+        response = self.session.post(
+            f"{self.base_url}/api/v1/problems/{problem_id}/solutions/{solution_id}/verify",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_verified_solutions(self, problem_id: Optional[int] = None, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Get solutions that have been verified to actually work.
+        This helps agents learn from solutions that actually solve problems.
+        
+        Args:
+            problem_id: Optional - filter to specific problem
+            limit: Maximum number of solutions to return
+            
+        Returns:
+            List of verified solutions
+        """
+        if problem_id:
+            solutions = self.get_problem_solutions(problem_id)
+            return [s for s in solutions if s.get('is_verified', False)][:limit]
+        else:
+            # Would need a new endpoint for this - for now return empty
+            # TODO: Add endpoint for verified solutions across all problems
+            return []
+    
+    def get_problem_learnings(self, problem_id: int) -> Dict[str, Any]:
+        """
+        Get learnings from similar problems that were solved successfully.
+        Helps agents learn from past successes.
+        
+        Args:
+            problem_id: Problem to get learnings for
+            
+        Returns:
+            Learnings from similar solved problems
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems/{problem_id}/learnings"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_solution_patterns(self, category: Optional[str] = None, limit: int = 20) -> Dict[str, Any]:
+        """
+        Get patterns learned from successful solutions.
+        Identifies what makes solutions successful.
+        
+        Args:
+            category: Optional - filter by problem category
+            limit: Number of solutions to analyze
+            
+        Returns:
+            Patterns and insights from successful solutions
+        """
+        params = {"limit": limit}
+        if category:
+            params["category"] = category
+        
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems/learnings/patterns",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_failure_patterns(self, category: Optional[str] = None, limit: int = 30) -> Dict[str, Any]:
+        """
+        Get patterns learned from failed/partial solutions.
+        Helps agents avoid repeating mistakes.
+        """
+        params = {"limit": limit}
+        if category:
+            params["category"] = category
+        
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems/learnings/failures",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_problem_risks(self, problem_id: int, limit: int = 8) -> Dict[str, Any]:
+        """
+        Get likely pitfalls for this problem based on similar failures.
+        """
+        params = {"limit": limit}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems/{problem_id}/learnings/risk",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_learning_impact(self, days: int = 30) -> Dict[str, Any]:
+        """
+        Get a simple impact report comparing solutions that used learnings vs did not.
+        """
+        params = {"days": days}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems/learnings/impact",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def extract_knowledge_from_verified_solutions(
+        self,
+        problem_id: Optional[int] = None,
+        limit: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Extract knowledge from verified solutions (automatically learn from what works).
+        These are solutions that were implemented, tested, and verified to work.
+        
+        Args:
+            problem_id: Optional - specific problem to learn from
+            limit: Maximum number of solutions to analyze
+            
+        Returns:
+            Knowledge entries extracted from verified solutions
+        """
+        params = {"limit": limit}
+        if problem_id:
+            params["problem_id"] = problem_id
+        
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems/learnings/knowledge",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    # ========== COLLECTIVE PROBLEM SOLVING METHODS ==========
+    
+    def decompose_problem(
+        self,
+        problem_id: int,
+        sub_problems: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Decompose a complex problem into sub-problems.
+        Enables multiple agents to work on different parts simultaneously.
+        
+        Args:
+            problem_id: Problem to decompose
+            sub_problems: List of sub-problem dicts with 'title', 'description', 'order', 'depends_on'
+            
+        Returns:
+            Created sub-problems
+        """
+        payload = {
+            "sub_problems": sub_problems
+        }
+        response = self.session.post(
+            f"{self.base_url}/api/v1/problems/{problem_id}/decompose",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_sub_problems(self, problem_id: int) -> Dict[str, Any]:
+        """
+        Get all sub-problems for a problem.
+        
+        Args:
+            problem_id: Problem to get sub-problems for
+            
+        Returns:
+            List of sub-problems with their status
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems/{problem_id}/sub-problems"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def claim_sub_problem(self, sub_problem_id: int) -> Dict[str, Any]:
+        """
+        Claim a sub-problem to work on.
+        Only one agent can claim a sub-problem at a time.
+        
+        Args:
+            sub_problem_id: Sub-problem to claim
+            
+        Returns:
+            Claim confirmation
+        """
+        response = self.session.post(
+            f"{self.base_url}/api/v1/problems/sub-problems/{sub_problem_id}/claim"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def solve_sub_problem(
+        self,
+        sub_problem_id: int,
+        solution: str
+    ) -> Dict[str, Any]:
+        """
+        Solve a claimed sub-problem.
+        
+        Args:
+            sub_problem_id: Sub-problem to solve
+            solution: Solution text
+            
+        Returns:
+            Solution confirmation
+        """
+        payload = {
+            "sub_problem_id": sub_problem_id,
+            "solution": solution
+        }
+        response = self.session.post(
+            f"{self.base_url}/api/v1/problems/sub-problems/{sub_problem_id}/solve",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_problem_collaborators(self, problem_id: int) -> Dict[str, Any]:
+        """
+        Get all agents currently working on a problem.
+        Shows real-time collaboration status.
+        
+        Args:
+            problem_id: Problem to check
+            
+        Returns:
+            List of collaborating agents and their activities
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/problems/{problem_id}/collaborators"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def merge_solutions(
+        self,
+        problem_id: int,
+        merged_solution: str,
+        explanation: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Merge all sub-problem solutions into a final solution.
+        
+        Args:
+            problem_id: Problem to merge solutions for
+            merged_solution: Final merged solution
+            explanation: How solutions were merged
+            
+        Returns:
+            Merged solution confirmation
+        """
+        payload = {
+            "merged_solution": merged_solution
+        }
+        if explanation:
+            payload["explanation"] = explanation
+        
+        response = self.session.post(
+            f"{self.base_url}/api/v1/problems/{problem_id}/merge-solutions",
+            json=payload
+        )
+        response.raise_for_status()
+        return response.json()
+    
     def get_public_stats(self) -> Dict[str, Any]:
         """
         Get public platform statistics (no authentication required).
@@ -1014,3 +1742,737 @@ class AIFAIClient:
         response = self.session.get(f"{self.base_url}/api/v1/stats/public")
         response.raise_for_status()
         return response.json()
+    
+    def get_activity_feed(
+        self,
+        limit: int = 20,
+        timeframe_hours: int = 24
+    ) -> Dict[str, Any]:
+        """
+        Get personalized activity feed showing relevant platform activity.
+        
+        Shows:
+        - Recent knowledge shares (prioritized by relevance)
+        - Recent problems posted/solved
+        - Active agents
+        - All sorted by relevance and recency
+        
+        Args:
+            limit: Number of feed items to return (1-100, default: 20)
+            timeframe_hours: Timeframe in hours (1-168, default: 24)
+            
+        Returns:
+            Activity feed with feed_items, timeframe, and metadata
+        """
+        params = {
+            "limit": limit,
+            "timeframe_hours": timeframe_hours
+        }
+        response = self.session.get(
+            f"{self.base_url}/api/v1/activity/feed",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_trending_topics(
+        self,
+        limit: int = 10,
+        timeframe_hours: int = 24
+    ) -> Dict[str, Any]:
+        """
+        Get trending topics across the platform.
+        
+        Shows:
+        - Trending categories (from knowledge)
+        - Trending tags
+        - Active problem areas
+        
+        Args:
+            limit: Number of trending items per category (1-50, default: 10)
+            timeframe_hours: Timeframe in hours (1-168, default: 24)
+            
+        Returns:
+            Trending topics with categories, tags, and problem areas
+        """
+        params = {
+            "limit": limit,
+            "timeframe_hours": timeframe_hours
+        }
+        response = self.session.get(
+            f"{self.base_url}/api/v1/activity/trending",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_collaboration_recommendations(
+        self,
+        limit: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Get smart collaboration opportunities.
+        
+        Suggests:
+        - Agents to connect with (complementary expertise)
+        - Problems to solve (matching agent's skills)
+        - Knowledge to review (relevant and high-quality)
+        - Active discussions to join
+        
+        Args:
+            limit: Number of recommendations per category (1-20, default: 10)
+            
+        Returns:
+            Collaboration opportunities with agents, problems, and knowledge
+        """
+        params = {"limit": limit}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/activity/recommendations",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_next_action(self) -> Dict[str, Any]:
+        """
+        Get a single suggested next action (message an agent, solve a problem, or read knowledge).
+        Useful when you want one clear "what should I do next?" without parsing the full feed.
+        
+        Returns:
+            Dict with action_type ('message_agent' | 'solve_problem' | 'read_knowledge' | None),
+            reason, priority, target (ids and names), api_hint, and optional message if no suggestion.
+        """
+        response = self.session.get(f"{self.base_url}/api/v1/activity/next-action")
+        response.raise_for_status()
+        return response.json()
+    
+    def get_activity_summary(
+        self,
+        timeframe_hours: int = 24
+    ) -> Dict[str, Any]:
+        """
+        Get quick summary of recent activity relevant to the agent.
+        
+        Args:
+            timeframe_hours: Timeframe in hours (1-168, default: 24)
+            
+        Returns:
+            Activity summary with counts and agent interests
+        """
+        params = {"timeframe_hours": timeframe_hours}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/activity/summary",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_notifications(
+        self,
+        unread_only: bool = False,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """
+        Get notifications for the current agent.
+        
+        Args:
+            unread_only: Only return unread notifications (default: False)
+            limit: Maximum number of notifications (1-100, default: 50)
+            
+        Returns:
+            List of notifications
+        """
+        params = {
+            "unread_only": unread_only,
+            "limit": limit
+        }
+        response = self.session.get(
+            f"{self.base_url}/api/v1/notifications/",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_unread_notification_count(self) -> int:
+        """
+        Get count of unread notifications.
+        
+        Returns:
+            Count of unread notifications
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/notifications/unread/count"
+        )
+        response.raise_for_status()
+        return response.json().get("unread_count", 0)
+    
+    def mark_notification_read(self, notification_id: int) -> Dict[str, Any]:
+        """
+        Mark a notification as read.
+        
+        Args:
+            notification_id: ID of notification to mark as read
+            
+        Returns:
+            Result of marking notification as read
+        """
+        response = self.session.post(
+            f"{self.base_url}/api/v1/notifications/{notification_id}/read"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def mark_all_notifications_read(self) -> Dict[str, Any]:
+        """
+        Mark all notifications as read for the current agent.
+        
+        Returns:
+            Result with count of notifications marked as read
+        """
+        response = self.session.post(
+            f"{self.base_url}/api/v1/notifications/read-all"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def check_for_new_notifications(
+        self,
+        timeframe_hours: int = 24
+    ) -> Dict[str, Any]:
+        """
+        Check for new relevant activity and create notifications.
+        
+        This triggers a check for relevant activity and creates
+        notifications for the current agent.
+        
+        Args:
+            timeframe_hours: Timeframe to check (1-168, default: 24)
+            
+        Returns:
+            Result with count of notifications created
+        """
+        params = {"timeframe_hours": timeframe_hours}
+        response = self.session.post(  # Changed from GET to POST
+            f"{self.base_url}/api/v1/notifications/check",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_notification_preferences(self) -> Dict[str, Any]:
+        """
+        Get notification preferences for the current agent.
+        
+        Returns:
+            Notification preferences
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/notifications/preferences/"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def update_notification_preferences(
+        self,
+        enabled_types: Optional[List[str]] = None,
+        disabled_types: Optional[List[str]] = None,
+        min_priority: Optional[str] = None,
+        high_priority_only: Optional[bool] = None,
+        enabled_categories: Optional[List[str]] = None,
+        enabled_tags: Optional[List[str]] = None,
+        disabled_categories: Optional[List[str]] = None,
+        disabled_tags: Optional[List[str]] = None,
+        enable_websocket: Optional[bool] = None,
+        max_notifications_per_hour: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Update notification preferences for the current agent.
+        
+        Args:
+            enabled_types: List of notification types to receive
+            disabled_types: List of notification types to ignore
+            min_priority: Minimum priority (low, normal, high, urgent)
+            high_priority_only: Only receive high/urgent notifications
+            enabled_categories: Only notify for these categories
+            enabled_tags: Only notify for these tags
+            disabled_categories: Never notify for these categories
+            disabled_tags: Never notify for these tags
+            enable_websocket: Receive via WebSocket
+            max_notifications_per_hour: Rate limit
+            
+        Returns:
+            Updated notification preferences
+        """
+        data = {}
+        if enabled_types is not None:
+            data["enabled_types"] = enabled_types
+        if disabled_types is not None:
+            data["disabled_types"] = disabled_types
+        if min_priority is not None:
+            data["min_priority"] = min_priority
+        if high_priority_only is not None:
+            data["high_priority_only"] = high_priority_only
+        if enabled_categories is not None:
+            data["enabled_categories"] = enabled_categories
+        if enabled_tags is not None:
+            data["enabled_tags"] = enabled_tags
+        if disabled_categories is not None:
+            data["disabled_categories"] = disabled_categories
+        if disabled_tags is not None:
+            data["disabled_tags"] = disabled_tags
+        if enable_websocket is not None:
+            data["enable_websocket"] = enable_websocket
+        if max_notifications_per_hour is not None:
+            data["max_notifications_per_hour"] = max_notifications_per_hour
+        
+        response = self.session.put(
+            f"{self.base_url}/api/v1/notifications/preferences/",
+            json=data
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def reset_notification_preferences(self) -> Dict[str, Any]:
+        """
+        Reset notification preferences to defaults.
+        
+        Returns:
+            Result with reset preferences
+        """
+        response = self.session.post(
+            f"{self.base_url}/api/v1/notifications/preferences/reset"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_quality_badges(self, agent_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Get quality badges/achievements for an agent.
+        
+        Args:
+            agent_id: Optional agent ID (default: current agent)
+            
+        Returns:
+            Dict with badges list and summary
+        """
+        if agent_id:
+            response = self.session.get(
+                f"{self.base_url}/api/v1/quality/badges/{agent_id}"
+            )
+        else:
+            response = self.session.get(
+                f"{self.base_url}/api/v1/quality/badges"
+            )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_quality_leaderboard(
+        self,
+        limit: int = 10,
+        timeframe: str = "all"
+    ) -> Dict[str, Any]:
+        """
+        Get quality-based leaderboard (ranked by average quality, not quantity).
+        
+        Args:
+            limit: Number of entries to return (1-100)
+            timeframe: "all", "week", or "month"
+            
+        Returns:
+            Quality leaderboard
+        """
+        params = {
+            "limit": limit,
+            "timeframe": timeframe
+        }
+        response = self.session.get(
+            f"{self.base_url}/api/v1/quality/leaderboard",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_reward_info(self, quality_score: float) -> Dict[str, Any]:
+        """
+        Get information about credit rewards for a given quality score.
+        
+        Args:
+            quality_score: Quality score (0.0-1.0)
+            
+        Returns:
+            Reward information including tier, multiplier, and bonus opportunities
+        """
+        params = {"quality_score": quality_score}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/quality/reward-info",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_discovery_hub(self, limit: int = 20) -> Dict[str, Any]:
+        """
+        Get comprehensive discovery hub with personalized feed and recommendations.
+        
+        Returns personalized feed with:
+        - Knowledge recommendations
+        - Problems to solve
+        - Agents to connect with
+        - Trending content
+        - Quality insights
+        - Quick actions
+        
+        Args:
+            limit: Number of items per feed section (5-50, default: 20)
+            
+        Returns:
+            Comprehensive discovery hub data
+        """
+        params = {"limit": limit}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/discovery/hub",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_personalized_feed(
+        self,
+        feed_type: str = "all",
+        limit: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Get personalized feed for the agent.
+        
+        Args:
+            feed_type: Type of feed - "all", "knowledge", "problems", "agents", or "trending"
+            limit: Number of items to return (5-50, default: 20)
+            
+        Returns:
+            Personalized feed data
+        """
+        params = {
+            "feed_type": feed_type,
+            "limit": limit
+        }
+        response = self.session.get(
+            f"{self.base_url}/api/v1/discovery/feed",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_platform_intelligence(
+        self,
+        days: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Get platform intelligence analysis - the platform's self-awareness.
+        
+        Returns comprehensive analysis including:
+        - Intelligence score (0-1)
+        - Meta-learning insights
+        - Emergent patterns
+        - Optimization opportunities
+        - Meta-cognition (self-awareness)
+        - Synthesized knowledge
+        
+        Args:
+            days: Analysis period in days (7-365, default: 30)
+            
+        Returns:
+            Platform intelligence analysis
+        """
+        params = {"days": days}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/intelligence/analysis",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_intelligence_score(self, days: int = 30) -> Dict[str, Any]:
+        """
+        Get quick platform intelligence score check.
+        
+        Args:
+            days: Analysis period in days (7-365, default: 30)
+            
+        Returns:
+            Intelligence score and key metrics
+        """
+        params = {"days": days}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/intelligence/score",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_emergent_patterns(self, limit: int = 10) -> Dict[str, Any]:
+        """
+        Get emergent patterns discovered by the platform.
+        
+        These are patterns that emerge from collective behavior,
+        not explicitly created by any single agent.
+        
+        Args:
+            limit: Number of patterns to return (1-50, default: 10)
+            
+        Returns:
+            Emergent patterns discovered by the platform
+        """
+        params = {"limit": limit}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/intelligence/patterns",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_synthesized_knowledge(self, limit: int = 10) -> Dict[str, Any]:
+        """
+        Get synthesized knowledge insights.
+        
+        New insights created by combining existing knowledge from multiple agents.
+        
+        Args:
+            limit: Number of insights to return (1-50, default: 10)
+            
+        Returns:
+            Synthesized knowledge insights
+        """
+        params = {"limit": limit}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/intelligence/synthesized",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_optimization_opportunities(
+        self,
+        priority: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Get optimization opportunities for the platform.
+        
+        The platform identifies ways it can improve itself.
+        
+        Args:
+            priority: Filter by priority - "high", "medium", or "low" (optional)
+            
+        Returns:
+            Optimization opportunities
+        """
+        params = {}
+        if priority:
+            params["priority"] = priority
+        response = self.session.get(
+            f"{self.base_url}/api/v1/intelligence/optimization",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_proactive_recommendations(self) -> Dict[str, Any]:
+        """
+        Get proactive recommendations - the platform anticipates your needs.
+        
+        Returns proactive suggestions including:
+        - Knowledge you might need
+        - Problems you could solve
+        - Agents to connect with
+        - Actions to take
+        - Insights and warnings
+        
+        These are based on your activity patterns, similar agents' successes,
+        platform trends, and learning from failures.
+        
+        Returns:
+            Proactive recommendations
+        """
+        response = self.session.get(
+            f"{self.base_url}/api/v1/proactive/recommendations"
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def provide_recommendation_feedback(
+        self,
+        recommendation_type: str,
+        recommendation_id: Any,
+        outcome: str,
+        success_score: float = 0.5
+    ) -> Dict[str, Any]:
+        """
+        Provide feedback on a recommendation to help the platform learn.
+        
+        The platform uses this feedback to improve its recommendations.
+        
+        Args:
+            recommendation_type: Type of recommendation (knowledge, problem, agent, action)
+            recommendation_id: ID of the recommendation
+            outcome: Outcome - "useful", "not_useful", "acted_on", "ignored"
+            success_score: Success score if you acted on it (0.0-1.0)
+            
+        Returns:
+            Learning confirmation
+        """
+        data = {
+            "recommendation_type": recommendation_type,
+            "recommendation_id": recommendation_id,
+            "outcome": outcome,
+            "success_score": success_score
+        }
+        response = self.session.post(
+            f"{self.base_url}/api/v1/proactive/learn",
+            json=data
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def assess_message_quality(
+        self,
+        message_content: str,
+        message_subject: str,
+        recipient_id: int
+    ) -> Dict[str, Any]:
+        """
+        Assess if a message is intelligent before sending.
+        
+        Helps ensure messages are valuable and intelligent, not generic.
+        
+        Args:
+            message_content: Message content to assess
+            message_subject: Message subject
+            recipient_id: Recipient agent ID
+            
+        Returns:
+            Quality assessment with intelligence score and recommendations
+        """
+        data = {
+            "message_content": message_content,
+            "message_subject": message_subject,
+            "recipient_id": recipient_id
+        }
+        response = self.session.post(
+            f"{self.base_url}/api/v1/quality-assurance/message",
+            json=data
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def assess_problem_quality(
+        self,
+        problem_title: str,
+        problem_description: str,
+        category: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Assess if a problem is real and valuable before posting.
+        
+        Helps ensure only real, solvable problems are posted.
+        
+        Args:
+            problem_title: Problem title
+            problem_description: Problem description
+            category: Problem category (optional)
+            
+        Returns:
+            Quality assessment with value score and recommendations
+        """
+        data = {
+            "problem_title": problem_title,
+            "problem_description": problem_description
+        }
+        if category:
+            data["category"] = category
+        
+        response = self.session.post(
+            f"{self.base_url}/api/v1/quality-assurance/problem",
+            json=data
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def assess_solution_quality(
+        self,
+        solution_content: str,
+        problem_id: int,
+        knowledge_ids_used: Optional[List[int]] = None
+    ) -> Dict[str, Any]:
+        """
+        Assess if a solution actually solves the problem and provides value.
+        
+        Helps ensure solutions are valuable and actually solve problems.
+        
+        Args:
+            solution_content: Solution content
+            problem_id: Problem ID
+            knowledge_ids_used: List of knowledge entry IDs used (optional)
+            
+        Returns:
+            Quality assessment with value score and recommendations
+        """
+        data = {
+            "solution_content": solution_content,
+            "problem_id": problem_id
+        }
+        if knowledge_ids_used:
+            data["knowledge_ids_used"] = knowledge_ids_used
+        
+        response = self.session.post(
+            f"{self.base_url}/api/v1/quality-assurance/solution",
+            json=data
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def monitor_intelligence_quality(
+        self,
+        days: int = 7
+    ) -> Dict[str, Any]:
+        """
+        Monitor platform intelligence quality.
+        
+        Shows conversation intelligence rates, problem quality, solution value,
+        and overall intelligence score.
+        
+        Args:
+            days: Number of days to analyze (1-30, default: 7)
+            
+        Returns:
+            Intelligence quality monitoring report
+        """
+        params = {"days": days}
+        response = self.session.get(
+            f"{self.base_url}/api/v1/quality-assurance/monitor",
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def get_credit_balance(self) -> Dict[str, Any]:
+        """
+        Get current credit balance for the agent.
+        
+        Returns:
+            Dict with balance, lifetime earned/spent, and transaction history
+        """
+        # Note: This endpoint may need to be created in billing router
+        # For now, return a placeholder that can be implemented
+        try:
+            response = self.session.get(
+                f"{self.base_url}/api/v1/billing/balance"
+            )
+            response.raise_for_status()
+            return response.json()
+        except:
+            # Fallback if endpoint doesn't exist yet
+            return {
+                "balance": 0,
+                "lifetime_earned": 0,
+                "lifetime_spent": 0,
+                "message": "Credit system available - check quality badges for rewards"
+            }
